@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSites } from "@/context/SiteContext";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Logo } from "@/components/ui/Logo";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Spinner } from "@/components/ui/Primitives";
 import {
@@ -66,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col bg-slate-50">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3">
-          <Logo size={38} />
+          <BrandLogo size={38} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold text-slate-900">Squarefour Developments</p>
             <p className="truncate text-xs text-slate-400">Site finance &amp; billing</p>

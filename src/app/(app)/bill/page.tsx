@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSites } from "@/context/SiteContext";
 import { useToast } from "@/context/ToastContext";
 import { useBranding } from "@/hooks/useBranding";
@@ -13,10 +14,24 @@ import { BillTemplate } from "@/components/bill/BillTemplate";
 import { Button, EmptyState, Spinner } from "@/components/ui/Primitives";
 
 export default function BillPage() {
+  return (
+    <Suspense fallback={null}>
+      <BillPageInner />
+    </Suspense>
+  );
+}
+
+function BillPageInner() {
   const { selectedSite, selectedSiteId } = useSites();
   const { show } = useToast();
   const { branding } = useBranding();
-  const [period, setPeriod] = useState<PeriodValue>(periodFor("weekly"));
+  const searchParams = useSearchParams();
+  const [period, setPeriod] = useState<PeriodValue>(() => {
+    const start = searchParams.get("start");
+    const end = searchParams.get("end");
+    if (start && end) return { type: "custom", start, end };
+    return periodFor("weekly");
+  });
   const [entries, setEntries] = useState<EntryWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);

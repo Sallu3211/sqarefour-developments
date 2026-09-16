@@ -9,6 +9,7 @@ import type { Category, CategoryType, Site, Worker } from "@/lib/types";
 import { WORKER_ROLES } from "@/lib/constants";
 import { Button, Card, Input, Spinner } from "@/components/ui/Primitives";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Logo } from "@/components/ui/Logo";
 import clsx from "clsx";
 
@@ -69,7 +70,10 @@ function SitesTab() {
     show("Site added", "success");
   }
 
+  const [pendingRemove, setPendingRemove] = useState<Site | null>(null);
+
   async function deactivate(id: string) {
+    setPendingRemove(null);
     await supabase.from("sites").update({ is_active: false }).eq("id", id);
     refresh();
     show("Site removed", "info");
@@ -86,11 +90,20 @@ function SitesTab() {
       {sites.map((s) => (
         <div key={s.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
           <span className="font-medium text-slate-800">{s.name}</span>
-          <button onClick={() => deactivate(s.id)} className="text-xs font-semibold text-red-500">
+          <button onClick={() => setPendingRemove(s)} className="text-xs font-semibold text-red-500">
             Remove
           </button>
         </div>
       ))}
+      <ConfirmDialog
+        open={!!pendingRemove}
+        title={`Remove "${pendingRemove?.name}"?`}
+        description="It will no longer appear in the site picker, but past entries and bills for it stay intact."
+        confirmLabel="Remove"
+        danger
+        onConfirm={() => pendingRemove && deactivate(pendingRemove.id)}
+        onCancel={() => setPendingRemove(null)}
+      />
     </div>
   );
 }
@@ -128,7 +141,10 @@ function CategoriesTab() {
     load();
   }
 
+  const [pendingRemove, setPendingRemove] = useState<Category | null>(null);
+
   async function deactivate(id: string) {
+    setPendingRemove(null);
     await supabase.from("categories").update({ is_active: false }).eq("id", id);
     load();
     show("Category removed", "info");
@@ -165,12 +181,21 @@ function CategoriesTab() {
               <p className="font-medium text-slate-800">{c.name}</p>
               <p className="text-xs capitalize text-slate-400">{c.type}</p>
             </div>
-            <button onClick={() => deactivate(c.id)} className="text-xs font-semibold text-red-500">
+            <button onClick={() => setPendingRemove(c)} className="text-xs font-semibold text-red-500">
               Remove
             </button>
           </div>
         ))
       )}
+      <ConfirmDialog
+        open={!!pendingRemove}
+        title={`Remove "${pendingRemove?.name}"?`}
+        description="It won't show up when adding new entries, but past entries keep this category."
+        confirmLabel="Remove"
+        danger
+        onConfirm={() => pendingRemove && deactivate(pendingRemove.id)}
+        onCancel={() => setPendingRemove(null)}
+      />
     </div>
   );
 }
@@ -220,7 +245,10 @@ function WorkersTab() {
     load();
   }
 
+  const [pendingRemove, setPendingRemove] = useState<WorkerWithSite | null>(null);
+
   async function deactivate(id: string) {
+    setPendingRemove(null);
     await supabase.from("workers").update({ is_active: false }).eq("id", id);
     load();
     show("Worker removed", "info");
@@ -273,12 +301,21 @@ function WorkersTab() {
                 {w.site ? ` · ${w.site.name}` : ""}
               </p>
             </div>
-            <button onClick={() => deactivate(w.id)} className="text-xs font-semibold text-red-500">
+            <button onClick={() => setPendingRemove(w)} className="text-xs font-semibold text-red-500">
               Remove
             </button>
           </div>
         ))
       )}
+      <ConfirmDialog
+        open={!!pendingRemove}
+        title={`Remove "${pendingRemove?.name}"?`}
+        description="They'll no longer appear when logging labour/mason payments, but past payments stay in their history."
+        confirmLabel="Remove"
+        danger
+        onConfirm={() => pendingRemove && deactivate(pendingRemove.id)}
+        onCancel={() => setPendingRemove(null)}
+      />
     </div>
   );
 }

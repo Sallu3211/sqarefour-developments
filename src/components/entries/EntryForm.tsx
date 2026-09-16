@@ -253,7 +253,14 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
       return;
     }
 
-    show(`Saved ${rows.length} ${rows.length === 1 ? "entry" : "entries"}`, "success");
+    const dates = items.map((i) => i.entryDate).sort();
+    const start = dates[0];
+    const end = dates[dates.length - 1];
+
+    show(`Saved ${rows.length} ${rows.length === 1 ? "entry" : "entries"}`, "success", {
+      label: "View Bill",
+      onClick: () => router.push(`/bill?start=${start}&end=${end}`),
+    });
     setItems([]);
     draft.clearDraft();
   }
