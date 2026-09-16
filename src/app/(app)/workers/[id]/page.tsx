@@ -4,15 +4,19 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { formatMoney } from "@/lib/format";
-import type { EntryWithRelations, Worker } from "@/lib/types";
+import type { EntryWithRelations, Site, Worker } from "@/lib/types";
 import { PeriodFilter, periodFor, type PeriodValue } from "@/components/filters/PeriodFilter";
 import { EntryRow } from "@/components/entries/EntryRow";
 import { Card, EmptyState, Spinner } from "@/components/ui/Primitives";
 
+interface WorkerWithSite extends Worker {
+  site?: Site | null;
+}
+
 export default function WorkerDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const [worker, setWorker] = useState<Worker | null>(null);
+  const [worker, setWorker] = useState<WorkerWithSite | null>(null);
   const [entries, setEntries] = useState<EntryWithRelations[]>([]);
   const [period, setPeriod] = useState<PeriodValue>(periodFor("monthly"));
   const [loading, setLoading] = useState(true);
@@ -22,7 +26,7 @@ export default function WorkerDetailPage() {
     async function load() {
       setLoading(true);
       const [workerRes, entriesRes] = await Promise.all([
-        supabase.from("workers").select("*").eq("id", params.id).single(),
+        supabase.from("workers").select("*, site:sites(*)").eq("id", params.id).single(),
         supabase
           .from("entries")
           .select("*, category:categories(*), worker:workers(*)")
@@ -33,7 +37,7 @@ export default function WorkerDetailPage() {
           .order("entry_date", { ascending: false }),
       ]);
       if (cancelled) return;
-      setWorker(workerRes.data as Worker);
+      setWorker(workerRes.data as WorkerWithSite);
       setEntries((entriesRes.data as EntryWithRelations[]) || []);
       setLoading(false);
     }
@@ -59,7 +63,11 @@ export default function WorkerDetailPage() {
         <>
           <div>
             <h1 className="text-xl font-bold text-slate-900">{worker.name}</h1>
-            <p className="text-sm text-slate-500">{worker.role}{worker.phone ? ` · ${worker.phone}` : ""}</p>
+            <p className="text-sm text-slate-500">
+              {worker.role}
+              {worker.site ? ` · ${worker.site.name}` : ""}
+              {worker.phone ? ` · ${worker.phone}` : ""}
+            </p>
           </div>
 
           <PeriodFilter value={period} onChange={setPeriod} />

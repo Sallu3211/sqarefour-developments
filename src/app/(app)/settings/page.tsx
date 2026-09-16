@@ -5,9 +5,10 @@ import { useSites } from "@/context/SiteContext";
 import { useToast } from "@/context/ToastContext";
 import { useBranding } from "@/hooks/useBranding";
 import { supabase } from "@/lib/supabase/client";
-import type { Category, CategoryType, Worker } from "@/lib/types";
+import type { Category, CategoryType, Site, Worker } from "@/lib/types";
 import { WORKER_ROLES } from "@/lib/constants";
 import { Button, Card, Input, Spinner } from "@/components/ui/Primitives";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Logo } from "@/components/ui/Logo";
 import clsx from "clsx";
 
@@ -174,18 +175,29 @@ function CategoriesTab() {
   );
 }
 
+interface WorkerWithSite extends Worker {
+  site?: Site | null;
+}
+
 function WorkersTab() {
   const { show } = useToast();
-  const [workers, setWorkers] = useState<Worker[]>([]);
+  const { sites, addSite } = useSites();
+  const [workers, setWorkers] = useState<WorkerWithSite[]>([]);
   const [name, setName] = useState("");
   const [role, setRole] = useState(WORKER_ROLES[0]);
+  const [siteId, setSiteId] = useState<string | null>(null);
+  const [creatingSite, setCreatingSite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("workers").select("*").eq("is_active", true).order("name");
-    setWorkers((data as Worker[]) || []);
+    const { data } = await supabase
+      .from("workers")
+      .select("*, site:sites(*)")
+      .eq("is_active", true)
+      .order("name");
+    setWorkers((data as WorkerWithSite[]) || []);
     setLoading(false);
   }
 
@@ -196,13 +208,14 @@ function WorkersTab() {
   async function handleAdd() {
     if (!name.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("workers").insert({ name: name.trim(), role });
+    const { error } = await supabase.from("workers").insert({ name: name.trim(), role, default_site_id: siteId });
     setSaving(false);
     if (error) {
       show("Couldn't add worker", "error");
       return;
     }
     setName("");
+    setSiteId(null);
     show("Worker added", "success");
     load();
   }
@@ -231,6 +244,19 @@ function WorkersTab() {
             </button>
           ))}
         </div>
+        <SearchableSelect
+          value={siteId}
+          onChange={setSiteId}
+          options={sites.map((s) => ({ id: s.id, label: s.name, sublabel: s.code || undefined }))}
+          placeholder="Assign to a site (optional)..."
+          onCreate={async (n) => {
+            setCreatingSite(true);
+            const site = await addSite(n);
+            setCreatingSite(false);
+            if (site) setSiteId(site.id);
+          }}
+          creating={creatingSite}
+        />
         <Button onClick={handleAdd} disabled={saving || !name.trim()}>
           Add Worker
         </Button>
@@ -242,7 +268,10 @@ function WorkersTab() {
           <div key={w.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
             <div>
               <p className="font-medium text-slate-800">{w.name}</p>
-              <p className="text-xs text-slate-400">{w.role}</p>
+              <p className="text-xs text-slate-400">
+                {w.role}
+                {w.site ? ` · ${w.site.name}` : ""}
+              </p>
             </div>
             <button onClick={() => deactivate(w.id)} className="text-xs font-semibold text-red-500">
               Remove

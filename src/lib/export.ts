@@ -1,4 +1,7 @@
-import html2canvas from "html2canvas";
+// Tailwind v4's default palette uses oklch()/lab() colors, which the
+// original html2canvas can't parse (renders blank). html2canvas-pro is a
+// maintained fork that adds support for modern CSS color functions.
+import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 
 async function captureCanvas(el: HTMLElement) {

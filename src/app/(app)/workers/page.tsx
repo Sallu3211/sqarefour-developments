@@ -4,28 +4,37 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useToast } from "@/context/ToastContext";
+import { useSites } from "@/context/SiteContext";
 import { WORKER_ROLES } from "@/lib/constants";
-import type { Worker } from "@/lib/types";
+import type { Site, Worker } from "@/lib/types";
 import { Button, Card, EmptyState, Input, Spinner } from "@/components/ui/Primitives";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+
+interface WorkerWithSite extends Worker {
+  site?: Site | null;
+}
 
 export default function WorkersPage() {
   const { show } = useToast();
-  const [workers, setWorkers] = useState<Worker[]>([]);
+  const { sites, addSite } = useSites();
+  const [workers, setWorkers] = useState<WorkerWithSite[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState(WORKER_ROLES[0]);
+  const [newSiteId, setNewSiteId] = useState<string | null>(null);
+  const [creatingSite, setCreatingSite] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function load() {
     setLoading(true);
     const { data } = await supabase
       .from("workers")
-      .select("*")
+      .select("*, site:sites(*)")
       .eq("is_active", true)
       .order("name");
-    setWorkers((data as Worker[]) || []);
+    setWorkers((data as WorkerWithSite[]) || []);
     setLoading(false);
   }
 
@@ -36,13 +45,16 @@ export default function WorkersPage() {
   async function handleAdd() {
     if (!newName.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("workers").insert({ name: newName.trim(), role: newRole });
+    const { error } = await supabase
+      .from("workers")
+      .insert({ name: newName.trim(), role: newRole, default_site_id: newSiteId });
     setSaving(false);
     if (error) {
       show("Couldn't add worker", "error");
       return;
     }
     setNewName("");
+    setNewSiteId(null);
     setShowAdd(false);
     show("Worker added", "success");
     load();
@@ -80,6 +92,19 @@ export default function WorkersPage() {
               </button>
             ))}
           </div>
+          <SearchableSelect
+            value={newSiteId}
+            onChange={setNewSiteId}
+            options={sites.map((s) => ({ id: s.id, label: s.name, sublabel: s.code || undefined }))}
+            placeholder="Assign to a site (optional)..."
+            onCreate={async (name) => {
+              setCreatingSite(true);
+              const site = await addSite(name);
+              setCreatingSite(false);
+              if (site) setNewSiteId(site.id);
+            }}
+            creating={creatingSite}
+          />
           <Button onClick={handleAdd} disabled={saving || !newName.trim()}>
             {saving ? "Saving..." : "Save Worker"}
           </Button>
@@ -104,7 +129,10 @@ export default function WorkersPage() {
             >
               <div>
                 <p className="font-semibold text-slate-800">{w.name}</p>
-                <p className="text-xs text-slate-400">{w.role}</p>
+                <p className="text-xs text-slate-400">
+                  {w.role}
+                  {w.site ? ` · ${w.site.name}` : ""}
+                </p>
               </div>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="text-slate-300">
                 <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
