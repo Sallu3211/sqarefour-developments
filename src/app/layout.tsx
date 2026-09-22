@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: "Squarefour Developments — Site Finance & Billing",
   description:
     "Daily and weekly purchase, labour, and expense tracking with printable bills for Squarefour Developments construction sites.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Squarefour",
+  },
 };
 
 export const viewport: Viewport = {
