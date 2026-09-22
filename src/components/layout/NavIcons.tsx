@@ -42,6 +42,18 @@ export function IconSettings(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+export function IconEdit(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path
+        d="M4 20h4l10.5-10.5a2 2 0 0 0-4-4L4 16v4Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 export function IconLogout(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>

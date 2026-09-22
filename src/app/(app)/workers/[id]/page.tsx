@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/format";
 import type { EntryWithRelations, Site, Worker } from "@/lib/types";
 import { PeriodFilter, periodFor, type PeriodValue } from "@/components/filters/PeriodFilter";
 import { EntryRow } from "@/components/entries/EntryRow";
+import { EditEntryModal } from "@/components/entries/EditEntryModal";
 import { Card, EmptyState, Spinner } from "@/components/ui/Primitives";
 
 interface WorkerWithSite extends Worker {
@@ -20,6 +21,8 @@ export default function WorkerDetailPage() {
   const [entries, setEntries] = useState<EntryWithRelations[]>([]);
   const [period, setPeriod] = useState<PeriodValue>(periodFor("monthly"));
   const [loading, setLoading] = useState(true);
+  const [editingEntry, setEditingEntry] = useState<EntryWithRelations | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +48,7 @@ export default function WorkerDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [params.id, period.start, period.end]);
+  }, [params.id, period.start, period.end, refreshKey]);
 
   const total = entries.reduce((s, e) => s + Number(e.amount), 0);
 
@@ -86,13 +89,24 @@ export default function WorkerDetailPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {entries.map((e) => (
-                <EntryRow key={e.id} entry={e} />
+                <EntryRow key={e.id} entry={e} onClick={() => setEditingEntry(e)} />
               ))}
             </div>
           )}
         </>
       ) : (
         <EmptyState title="Worker not found" />
+      )}
+
+      {editingEntry && (
+        <EditEntryModal
+          entry={editingEntry}
+          onClose={() => setEditingEntry(null)}
+          onSaved={() => {
+            setEditingEntry(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
       )}
     </div>
   );

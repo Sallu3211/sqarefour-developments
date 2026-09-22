@@ -1,4 +1,5 @@
 import {
+  eachDayOfInterval,
   endOfMonth,
   endOfWeek,
   endOfYear,
@@ -55,6 +56,12 @@ export function yearRange(date: Date = new Date()) {
     start: format(startOfYear(date), "yyyy-MM-dd"),
     end: format(endOfYear(date), "yyyy-MM-dd"),
   };
+}
+
+/** Inclusive list of yyyy-MM-dd dates from start to end. */
+export function datesInRange(startISO: string, endISO: string): string[] {
+  const days = eachDayOfInterval({ start: parseISO(startISO), end: parseISO(endISO) });
+  return days.map((d) => format(d, "yyyy-MM-dd"));
 }
 
 export function dayRange(date: Date = new Date()) {

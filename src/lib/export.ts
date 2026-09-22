@@ -35,11 +35,21 @@ export async function exportElementAsPdf(el: HTMLElement, filename: string) {
   return imgData;
 }
 
-export async function shareElementAsImage(el: HTMLElement, filename: string, title: string) {
+/**
+ * Capture the element to a PNG blob ahead of time (call this as soon as the
+ * bill is ready, NOT inside the Share button's click handler). Web Share API
+ * requires navigator.share() to run within the click's "user activation"
+ * window — the multi-hundred-ms html2canvas capture alone is often enough to
+ * lose that on mobile browsers, silently downgrading every share attempt to
+ * the desktop fallback. Pre-capturing means the click handler only does
+ * near-instant work before calling navigator.share().
+ */
+export async function captureElementToBlob(el: HTMLElement): Promise<Blob | null> {
   const canvas = await captureCanvas(el);
-  const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-  if (!blob) return false;
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
 
+export async function shareImageBlob(blob: Blob, filename: string, title: string): Promise<boolean> {
   const file = new File([blob], `${filename}.png`, { type: "image/png" });
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {

@@ -24,7 +24,7 @@ export function ConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
         <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-        {description && <p className="mt-1.5 text-sm text-slate-500">{description}</p>}
+        {description && <p className="mt-1.5 whitespace-pre-line text-sm text-slate-500">{description}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>
             Cancel

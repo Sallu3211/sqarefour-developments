@@ -7,7 +7,7 @@ import { useToast } from "@/context/ToastContext";
 import { useBranding } from "@/hooks/useBranding";
 import { supabase } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/format";
-import { exportElementAsImage, exportElementAsPdf, shareElementAsImage } from "@/lib/export";
+import { captureElementToBlob, exportElementAsImage, exportElementAsPdf, shareImageBlob } from "@/lib/export";
 import type { EntryWithRelations } from "@/lib/types";
 import { PeriodFilter, periodFor, type PeriodValue } from "@/components/filters/PeriodFilter";
 import { BillTemplate } from "@/components/bill/BillTemplate";
@@ -35,6 +35,7 @@ function BillPageInner() {
   const [entries, setEntries] = useState<EntryWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [shareBlob, setShareBlob] = useState<Blob | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,6 +63,24 @@ function BillPageInner() {
       cancelled = true;
     };
   }, [selectedSiteId, period.start, period.end]);
+
+  // Pre-capture the bill as an image as soon as it's rendered, so the Share
+  // button's click handler only has near-instant work left to do — see the
+  // comment on captureElementToBlob for why this matters.
+  useEffect(() => {
+    setShareBlob(null);
+    if (loading || !printRef.current) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (!printRef.current) return;
+      const blob = await captureElementToBlob(printRef.current);
+      if (!cancelled) setShareBlob(blob);
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [loading, entries, branding.logoUrl]);
 
   const periodLabel = period.start === period.end ? formatDate(period.start) : `${formatDate(period.start)} – ${formatDate(period.end)}`;
   const filenameBase = `bill-${selectedSite?.name?.replace(/\s+/g, "-") || "site"}-${period.start}-to-${period.end}`;
@@ -99,9 +118,21 @@ function BillPageInner() {
   }
 
   async function handleShare() {
-    if (!printRef.current || !selectedSite) return;
+    if (!selectedSite) return;
+    // Prefer the pre-captured blob (near-instant) so this click handler
+    // stays inside the browser's "user activation" window that
+    // navigator.share() requires. Only fall back to capturing now (slower,
+    // more likely to be rejected by the browser) if it somehow isn't ready.
+    let blob = shareBlob;
+    if (!blob && printRef.current) {
+      blob = await captureElementToBlob(printRef.current);
+    }
+    if (!blob) {
+      show("Couldn't prepare the image — try again", "error");
+      return;
+    }
     setBusy("share");
-    const shared = await shareElementAsImage(printRef.current, filenameBase, `${selectedSite.name} — ${periodLabel}`);
+    const shared = await shareImageBlob(blob, filenameBase, `${selectedSite.name} — ${periodLabel}`);
     await saveSnapshot(null);
     setBusy(null);
     show(shared ? "Shared" : "Image downloaded — attach it in WhatsApp", "success");

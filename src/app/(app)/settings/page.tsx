@@ -11,6 +11,7 @@ import { Button, Card, Input, Spinner } from "@/components/ui/Primitives";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Logo } from "@/components/ui/Logo";
+import { IconEdit } from "@/components/layout/NavIcons";
 import clsx from "clsx";
 
 type Tab = "sites" | "categories" | "workers" | "branding";
@@ -71,12 +72,45 @@ function SitesTab() {
   }
 
   const [pendingRemove, setPendingRemove] = useState<Site | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState<{ id: string; summary: string } | null>(null);
 
   async function deactivate(id: string) {
     setPendingRemove(null);
     await supabase.from("sites").update({ is_active: false }).eq("id", id);
     refresh();
     show("Site removed", "info");
+  }
+
+  function startEdit(s: Site) {
+    setEditingId(s.id);
+    setEditName(s.name);
+  }
+
+  function requestSave(s: Site) {
+    if (!editName.trim() || editName.trim() === s.name) {
+      setEditingId(null);
+      return;
+    }
+    setPendingEdit({ id: s.id, summary: `Name: ${s.name} → ${editName.trim()}` });
+  }
+
+  async function confirmSaveEdit() {
+    if (!pendingEdit) return;
+    const id = pendingEdit.id;
+    setPendingEdit(null);
+    setEditSaving(true);
+    const { error } = await supabase.from("sites").update({ name: editName.trim() }).eq("id", id);
+    setEditSaving(false);
+    if (error) {
+      show("Couldn't save changes", "error");
+      return;
+    }
+    setEditingId(null);
+    refresh();
+    show("Site updated", "success");
   }
 
   return (
@@ -87,14 +121,31 @@ function SitesTab() {
           Add
         </Button>
       </Card>
-      {sites.map((s) => (
-        <div key={s.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
-          <span className="font-medium text-slate-800">{s.name}</span>
-          <button onClick={() => setPendingRemove(s)} className="text-xs font-semibold text-red-500">
-            Remove
-          </button>
-        </div>
-      ))}
+      {sites.map((s) =>
+        editingId === s.id ? (
+          <div key={s.id} className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
+            <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus className="flex-1" />
+            <Button size="sm" onClick={() => requestSave(s)} disabled={editSaving || !editName.trim()}>
+              Save
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <div key={s.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
+            <span className="font-medium text-slate-800">{s.name}</span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => startEdit(s)} aria-label="Edit site" className="text-slate-400 hover:text-amber-600">
+                <IconEdit className="h-4 w-4" />
+              </button>
+              <button onClick={() => setPendingRemove(s)} className="text-xs font-semibold text-red-500">
+                Remove
+              </button>
+            </div>
+          </div>
+        )
+      )}
       <ConfirmDialog
         open={!!pendingRemove}
         title={`Remove "${pendingRemove?.name}"?`}
@@ -103,6 +154,14 @@ function SitesTab() {
         danger
         onConfirm={() => pendingRemove && deactivate(pendingRemove.id)}
         onCancel={() => setPendingRemove(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingEdit}
+        title="Save this change?"
+        description={pendingEdit?.summary}
+        confirmLabel="Save"
+        onConfirm={confirmSaveEdit}
+        onCancel={() => setPendingEdit(null)}
       />
     </div>
   );
@@ -142,12 +201,53 @@ function CategoriesTab() {
   }
 
   const [pendingRemove, setPendingRemove] = useState<Category | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState<CategoryType>("purchase");
+  const [editSaving, setEditSaving] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState<{ id: string; summary: string } | null>(null);
 
   async function deactivate(id: string) {
     setPendingRemove(null);
     await supabase.from("categories").update({ is_active: false }).eq("id", id);
     load();
     show("Category removed", "info");
+  }
+
+  function startEdit(c: Category) {
+    setEditingId(c.id);
+    setEditName(c.name);
+    setEditType(c.type);
+  }
+
+  function requestSave(c: Category) {
+    const changes: string[] = [];
+    if (editName.trim() && editName.trim() !== c.name) changes.push(`Name: ${c.name} → ${editName.trim()}`);
+    if (editType !== c.type) changes.push(`Type: ${c.type} → ${editType}`);
+    if (changes.length === 0) {
+      setEditingId(null);
+      return;
+    }
+    setPendingEdit({ id: c.id, summary: changes.join("\n") });
+  }
+
+  async function confirmSaveEdit() {
+    if (!pendingEdit) return;
+    const id = pendingEdit.id;
+    setPendingEdit(null);
+    setEditSaving(true);
+    const { error } = await supabase
+      .from("categories")
+      .update({ name: editName.trim(), type: editType })
+      .eq("id", id);
+    setEditSaving(false);
+    if (error) {
+      show("Couldn't save changes", "error");
+      return;
+    }
+    setEditingId(null);
+    load();
+    show("Category updated", "success");
   }
 
   return (
@@ -175,17 +275,50 @@ function CategoriesTab() {
       {loading ? (
         <Spinner className="mx-auto h-5 w-5 text-amber-500" />
       ) : (
-        categories.map((c) => (
-          <div key={c.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
-            <div>
-              <p className="font-medium text-slate-800">{c.name}</p>
-              <p className="text-xs capitalize text-slate-400">{c.type}</p>
+        categories.map((c) =>
+          editingId === c.id ? (
+            <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+              <div className="flex gap-2">
+                {(["purchase", "labour", "other"] as CategoryType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setEditType(t)}
+                    className={clsx(
+                      "flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold capitalize",
+                      editType === t ? "bg-amber-500 text-slate-900" : "bg-white text-slate-600"
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => requestSave(c)} disabled={editSaving || !editName.trim()}>
+                  Save
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>
+                  Cancel
+                </Button>
+              </div>
             </div>
-            <button onClick={() => setPendingRemove(c)} className="text-xs font-semibold text-red-500">
-              Remove
-            </button>
-          </div>
-        ))
+          ) : (
+            <div key={c.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
+              <div>
+                <p className="font-medium text-slate-800">{c.name}</p>
+                <p className="text-xs capitalize text-slate-400">{c.type}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => startEdit(c)} aria-label="Edit category" className="text-slate-400 hover:text-amber-600">
+                  <IconEdit className="h-4 w-4" />
+                </button>
+                <button onClick={() => setPendingRemove(c)} className="text-xs font-semibold text-red-500">
+                  Remove
+                </button>
+              </div>
+            </div>
+          )
+        )
       )}
       <ConfirmDialog
         open={!!pendingRemove}
@@ -195,6 +328,14 @@ function CategoriesTab() {
         danger
         onConfirm={() => pendingRemove && deactivate(pendingRemove.id)}
         onCancel={() => setPendingRemove(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingEdit}
+        title="Save these changes?"
+        description={pendingEdit?.summary}
+        confirmLabel="Save"
+        onConfirm={confirmSaveEdit}
+        onCancel={() => setPendingEdit(null)}
       />
     </div>
   );
@@ -246,12 +387,62 @@ function WorkersTab() {
   }
 
   const [pendingRemove, setPendingRemove] = useState<WorkerWithSite | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState(WORKER_ROLES[0]);
+  const [editSiteId, setEditSiteId] = useState<string | null>(null);
+  const [editCreatingSite, setEditCreatingSite] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
 
   async function deactivate(id: string) {
     setPendingRemove(null);
     await supabase.from("workers").update({ is_active: false }).eq("id", id);
     load();
     show("Worker removed", "info");
+  }
+
+  function startEdit(w: WorkerWithSite) {
+    setEditingId(w.id);
+    setEditName(w.name);
+    setEditRole(w.role);
+    setEditSiteId(w.default_site_id);
+  }
+
+  const [pendingEdit, setPendingEdit] = useState<{ id: string; summary: string } | null>(null);
+
+  function requestSave(w: WorkerWithSite) {
+    const changes: string[] = [];
+    if (editName.trim() && editName.trim() !== w.name) changes.push(`Name: ${w.name} → ${editName.trim()}`);
+    if (editRole !== w.role) changes.push(`Role: ${w.role} → ${editRole}`);
+    if (editSiteId !== w.default_site_id) {
+      const oldSite = w.site?.name || "—";
+      const newSite = sites.find((s) => s.id === editSiteId)?.name || "—";
+      changes.push(`Site: ${oldSite} → ${newSite}`);
+    }
+    if (changes.length === 0) {
+      setEditingId(null);
+      return;
+    }
+    setPendingEdit({ id: w.id, summary: changes.join("\n") });
+  }
+
+  async function confirmSaveEdit() {
+    if (!pendingEdit) return;
+    const id = pendingEdit.id;
+    setPendingEdit(null);
+    setEditSaving(true);
+    const { error } = await supabase
+      .from("workers")
+      .update({ name: editName.trim(), role: editRole, default_site_id: editSiteId })
+      .eq("id", id);
+    setEditSaving(false);
+    if (error) {
+      show("Couldn't save changes", "error");
+      return;
+    }
+    setEditingId(null);
+    load();
+    show("Worker updated", "success");
   }
 
   return (
@@ -292,20 +483,66 @@ function WorkersTab() {
       {loading ? (
         <Spinner className="mx-auto h-5 w-5 text-amber-500" />
       ) : (
-        workers.map((w) => (
-          <div key={w.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
-            <div>
-              <p className="font-medium text-slate-800">{w.name}</p>
-              <p className="text-xs text-slate-400">
-                {w.role}
-                {w.site ? ` · ${w.site.name}` : ""}
-              </p>
+        workers.map((w) =>
+          editingId === w.id ? (
+            <div key={w.id} className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+              <div className="flex gap-2 overflow-x-auto">
+                {WORKER_ROLES.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setEditRole(r)}
+                    className={clsx(
+                      "shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold",
+                      editRole === r ? "bg-amber-500 text-slate-900" : "bg-white text-slate-600"
+                    )}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <SearchableSelect
+                value={editSiteId}
+                onChange={setEditSiteId}
+                options={sites.map((s) => ({ id: s.id, label: s.name, sublabel: s.code || undefined }))}
+                placeholder="Assign to a site (optional)..."
+                onCreate={async (n) => {
+                  setEditCreatingSite(true);
+                  const site = await addSite(n);
+                  setEditCreatingSite(false);
+                  if (site) setEditSiteId(site.id);
+                }}
+                creating={editCreatingSite}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => requestSave(w)} disabled={editSaving || !editName.trim()}>
+                  Save
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>
+                  Cancel
+                </Button>
+              </div>
             </div>
-            <button onClick={() => setPendingRemove(w)} className="text-xs font-semibold text-red-500">
-              Remove
-            </button>
-          </div>
-        ))
+          ) : (
+            <div key={w.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
+              <div>
+                <p className="font-medium text-slate-800">{w.name}</p>
+                <p className="text-xs text-slate-400">
+                  {w.role}
+                  {w.site ? ` · ${w.site.name}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => startEdit(w)} aria-label="Edit worker" className="text-slate-400 hover:text-amber-600">
+                  <IconEdit className="h-4 w-4" />
+                </button>
+                <button onClick={() => setPendingRemove(w)} className="text-xs font-semibold text-red-500">
+                  Remove
+                </button>
+              </div>
+            </div>
+          )
+        )
       )}
       <ConfirmDialog
         open={!!pendingRemove}
@@ -315,6 +552,14 @@ function WorkersTab() {
         danger
         onConfirm={() => pendingRemove && deactivate(pendingRemove.id)}
         onCancel={() => setPendingRemove(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingEdit}
+        title="Save these changes?"
+        description={pendingEdit?.summary}
+        confirmLabel="Save"
+        onConfirm={confirmSaveEdit}
+        onCancel={() => setPendingEdit(null)}
       />
     </div>
   );

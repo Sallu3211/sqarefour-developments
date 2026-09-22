@@ -9,6 +9,7 @@ import type { EntryWithRelations } from "@/lib/types";
 import { Card, EmptyState, Spinner } from "@/components/ui/Primitives";
 import { ENTRY_TYPE_STYLES } from "@/lib/constants";
 import { EntryRow } from "@/components/entries/EntryRow";
+import { EditEntryModal } from "@/components/entries/EditEntryModal";
 import { IconList, IconPlus, IconReceipt, IconUsers } from "@/components/layout/NavIcons";
 
 const QUICK_ACTIONS = [
@@ -24,6 +25,8 @@ export default function DashboardPage() {
   const [todayTotal, setTodayTotal] = useState(0);
   const [weekTotal, setWeekTotal] = useState(0);
   const [recent, setRecent] = useState<EntryWithRelations[]>([]);
+  const [editingEntry, setEditingEntry] = useState<EntryWithRelations | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!selectedSiteId) {
@@ -69,7 +72,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedSiteId]);
+  }, [selectedSiteId, refreshKey]);
 
   if (sitesLoading) {
     return (
@@ -140,11 +143,22 @@ export default function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {recent.map((e) => (
-              <EntryRow key={e.id} entry={e} />
+              <EntryRow key={e.id} entry={e} onClick={() => setEditingEntry(e)} />
             ))}
           </div>
         )}
       </div>
+
+      {editingEntry && (
+        <EditEntryModal
+          entry={editingEntry}
+          onClose={() => setEditingEntry(null)}
+          onSaved={() => {
+            setEditingEntry(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

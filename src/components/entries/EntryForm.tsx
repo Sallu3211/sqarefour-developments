@@ -6,7 +6,7 @@ import { useSites } from "@/context/SiteContext";
 import { useToast } from "@/context/ToastContext";
 import { useDraft } from "@/hooks/useDraft";
 import { supabase } from "@/lib/supabase/client";
-import { formatMoney, relativeTime, todayISO } from "@/lib/format";
+import { datesInRange, formatMoney, relativeTime, todayISO } from "@/lib/format";
 import { ENTRY_TYPE_STYLES, WORKER_ROLES } from "@/lib/constants";
 import type { Category, EntryType, Worker } from "@/lib/types";
 import { Button, Card, Field, Input } from "@/components/ui/Primitives";
@@ -16,6 +16,8 @@ import { EntryTypeToggle } from "./EntryTypeToggle";
 interface LineShape {
   type: EntryType;
   entryDate: string;
+  multiDay: boolean;
+  endDate: string;
   categoryId: string | null;
   workerId: string | null;
   description: string;
@@ -40,6 +42,8 @@ function emptyLine(type: EntryType, entryDate: string): LineShape {
   return {
     type,
     entryDate,
+    multiDay: false,
+    endDate: entryDate,
     categoryId: null,
     workerId: null,
     description: "",
@@ -183,6 +187,9 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
     const amountNum = parseFloat(line.amount);
     if (!amountNum || amountNum <= 0) return "Enter an amount greater than 0";
     if (line.type === "labour" && !line.workerId) return "Select or add a worker";
+    if (line.type === "labour" && line.multiDay && line.endDate < line.entryDate) {
+      return "End date must be on or after the start date";
+    }
     return null;
   }
 
@@ -195,6 +202,23 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
     }
     const categoryLabel = categories.find((c) => c.id === line.categoryId)?.name || null;
     const workerLabel = workers.find((w) => w.id === line.workerId)?.name || null;
+
+    if (line.type === "labour" && line.multiDay) {
+      const dates = datesInRange(line.entryDate, line.endDate);
+      const newItems: PendingItem[] = dates.map((d) => ({
+        ...line,
+        entryDate: d,
+        localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${d}`,
+        categoryLabel,
+        workerLabel,
+        photo: null,
+      }));
+      setItems((list) => [...list, ...newItems]);
+      resetLine();
+      show(`Added ${dates.length} days to list`, "info");
+      return;
+    }
+
     const item: PendingItem = {
       ...line,
       localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -268,6 +292,10 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
   const categoryOptions = categories.map((c) => ({ id: c.id, label: c.name }));
   const workerOptions = workers.map((w) => ({ id: w.id, label: w.name, sublabel: w.role }));
   const listTotal = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  const multiDayCount =
+    line.type === "labour" && line.multiDay && line.endDate >= line.entryDate
+      ? datesInRange(line.entryDate, line.endDate).length
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -295,15 +323,62 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
             <Input value={selectedSite?.name || "No site selected"} disabled />
           </Field>
 
-          <Field label="Date">
-            <Input
-              type="date"
-              value={line.entryDate}
-              max={todayISO()}
-              onChange={(e) => update("entryDate", e.target.value)}
-              required
-            />
-          </Field>
+          {line.type === "labour" && (
+            <label className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5">
+              <span className="text-sm font-semibold text-slate-700">Multiple days (same amount each day)</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={line.multiDay}
+                onClick={() =>
+                  setLine((f) => ({ ...f, multiDay: !f.multiDay, endDate: f.entryDate }))
+                }
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                  line.multiDay ? "bg-amber-500" : "bg-slate-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                    line.multiDay ? "left-5" : "left-0.5"
+                  }`}
+                />
+              </button>
+            </label>
+          )}
+
+          {line.type === "labour" && line.multiDay ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Start Date">
+                <Input
+                  type="date"
+                  value={line.entryDate}
+                  max={todayISO()}
+                  onChange={(e) => update("entryDate", e.target.value)}
+                  required
+                />
+              </Field>
+              <Field label="End Date">
+                <Input
+                  type="date"
+                  value={line.endDate}
+                  min={line.entryDate}
+                  max={todayISO()}
+                  onChange={(e) => update("endDate", e.target.value)}
+                  required
+                />
+              </Field>
+            </div>
+          ) : (
+            <Field label="Date">
+              <Input
+                type="date"
+                value={line.entryDate}
+                max={todayISO()}
+                onChange={(e) => update("entryDate", e.target.value)}
+                required
+              />
+            </Field>
+          )}
 
           {line.type === "labour" ? (
             <Field label="Worker (Labour / Mason)">
@@ -373,18 +448,20 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
             />
           </Field>
 
-          <Field label="Receipt Photo" hint="Optional">
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-700"
-            />
-          </Field>
+          {!(line.type === "labour" && line.multiDay) && (
+            <Field label="Receipt Photo" hint="Optional">
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+                className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-700"
+              />
+            </Field>
+          )}
 
           <Button type="submit" variant="secondary" size="lg" className="w-full">
-            + Add to List
+            {multiDayCount ? `+ Add ${multiDayCount} Days to List` : "+ Add to List"}
           </Button>
         </form>
       </Card>

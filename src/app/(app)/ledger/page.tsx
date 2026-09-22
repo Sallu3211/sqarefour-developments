@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSites } from "@/context/SiteContext";
 import { useToast } from "@/context/ToastContext";
 import { supabase } from "@/lib/supabase/client";
-import { formatMoney } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { ENTRY_TYPE_LABELS } from "@/lib/constants";
 import type { EntryType, EntryWithRelations } from "@/lib/types";
 import { PeriodFilter, periodFor, type PeriodValue } from "@/components/filters/PeriodFilter";
@@ -150,7 +150,7 @@ export default function LedgerPage() {
           {visible.map((e) => (
             <div key={e.id} className="flex items-center gap-2">
               <div className={clsx("flex-1", e.deleted_at && "opacity-50")}>
-                <EntryRow entry={e} />
+                <EntryRow entry={e} onClick={e.deleted_at ? undefined : () => setEditingEntry(e)} />
                 {e.deleted_at && (
                   <span className="mt-1 inline-block rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                     Deleted
@@ -205,7 +205,20 @@ export default function LedgerPage() {
       <ConfirmDialog
         open={!!pendingDelete}
         title="Delete this entry?"
-        description={pendingDelete ? `${ENTRY_TYPE_LABELS[pendingDelete.type]} · ${formatMoney(pendingDelete.amount)}` : undefined}
+        description={
+          pendingDelete
+            ? [
+                `${ENTRY_TYPE_LABELS[pendingDelete.type]} · ${formatMoney(pendingDelete.amount)}`,
+                pendingDelete.type === "labour"
+                  ? pendingDelete.worker?.name
+                  : pendingDelete.category?.name,
+                pendingDelete.description,
+                formatDate(pendingDelete.entry_date),
+              ]
+                .filter(Boolean)
+                .join("\n")
+            : undefined
+        }
         confirmLabel="Delete"
         danger
         onConfirm={confirmDelete}

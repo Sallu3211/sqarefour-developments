@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { todayISO } from "@/lib/format";
+import { formatDate, formatMoney, todayISO } from "@/lib/format";
 import { WORKER_ROLES } from "@/lib/constants";
 import type { Category, EntryWithRelations, Worker } from "@/lib/types";
 import { Button, Field, Input } from "@/components/ui/Primitives";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function EditEntryModal({
   entry,
@@ -29,6 +30,7 @@ export function EditEntryModal({
   const [creatingOption, setCreatingOption] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingChanges, setPendingChanges] = useState<string[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,7 +76,40 @@ export function EditEntryModal({
     setWorkerId(data.id);
   }
 
-  async function handleSave() {
+  function buildChangeSummary(): string[] {
+    const changes: string[] = [];
+    if (entryDate !== entry.entry_date) {
+      changes.push(`Date: ${formatDate(entry.entry_date)} → ${formatDate(entryDate)}`);
+    }
+    if (entry.type === "labour") {
+      if (workerId !== entry.worker_id) {
+        const oldLabel = entry.worker?.name || "—";
+        const newLabel = workers.find((w) => w.id === workerId)?.name || "—";
+        changes.push(`Worker: ${oldLabel} → ${newLabel}`);
+      }
+    } else if (categoryId !== entry.category_id) {
+      const oldLabel = entry.category?.name || "—";
+      const newLabel = categories.find((c) => c.id === categoryId)?.name || "—";
+      changes.push(`Category: ${oldLabel} → ${newLabel}`);
+    }
+    if (description !== (entry.description || "")) {
+      changes.push(`Description: "${entry.description || "—"}" → "${description || "—"}"`);
+    }
+    const origQty = entry.quantity != null ? String(entry.quantity) : "";
+    if (quantity !== origQty) {
+      changes.push(`Quantity: ${origQty || "—"} → ${quantity || "—"}`);
+    }
+    const origPrice = entry.unit_price != null ? String(entry.unit_price) : "";
+    if (unitPrice !== origPrice) {
+      changes.push(`Unit Price: ${origPrice || "—"} → ${unitPrice || "—"}`);
+    }
+    if (parseFloat(amount) !== Number(entry.amount)) {
+      changes.push(`Amount: ${formatMoney(entry.amount)} → ${formatMoney(parseFloat(amount) || 0)}`);
+    }
+    return changes;
+  }
+
+  function handleReviewChanges() {
     const amountNum = parseFloat(amount);
     if (!amountNum || amountNum <= 0) {
       setError("Enter an amount greater than 0");
@@ -85,6 +120,16 @@ export function EditEntryModal({
       return;
     }
     setError(null);
+    const changes = buildChangeSummary();
+    if (changes.length === 0) {
+      onClose();
+      return;
+    }
+    setPendingChanges(changes);
+  }
+
+  async function confirmSave() {
+    setPendingChanges(null);
     setSaving(true);
     const { error: updateError } = await supabase
       .from("entries")
@@ -95,7 +140,7 @@ export function EditEntryModal({
         description,
         quantity: quantity ? parseFloat(quantity) : null,
         unit_price: unitPrice ? parseFloat(unitPrice) : null,
-        amount: amountNum,
+        amount: parseFloat(amount),
       })
       .eq("id", entry.id);
     setSaving(false);
@@ -161,18 +206,41 @@ export function EditEntryModal({
             <Input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </Field>
 
+          {entry.photo_url && (
+            <Field label="Receipt Photo">
+              <a href={entry.photo_url} target="_blank" rel="noopener noreferrer" className="block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={entry.photo_url}
+                  alt="Receipt"
+                  className="h-32 w-full rounded-xl border border-slate-200 object-cover"
+                />
+              </a>
+              <span className="mt-1 block text-xs text-slate-400">Tap to view full size</span>
+            </Field>
+          )}
+
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
 
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={handleReviewChanges} disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!pendingChanges}
+        title="Save these changes?"
+        description={pendingChanges?.join("\n")}
+        confirmLabel="Save"
+        onConfirm={confirmSave}
+        onCancel={() => setPendingChanges(null)}
+      />
     </div>
   );
 }
