@@ -33,6 +33,7 @@ export interface Entry {
   id: string;
   site_id: string;
   entry_date: string;
+  entry_date_end: string | null;
   type: EntryType;
   category_id: string | null;
   worker_id: string | null;

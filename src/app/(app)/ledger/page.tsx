@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSites } from "@/context/SiteContext";
 import { useToast } from "@/context/ToastContext";
 import { supabase } from "@/lib/supabase/client";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatEntryDate, formatMoney } from "@/lib/format";
 import { ENTRY_TYPE_LABELS } from "@/lib/constants";
 import type { EntryType, EntryWithRelations } from "@/lib/types";
 import { PeriodFilter, periodFor, type PeriodValue } from "@/components/filters/PeriodFilter";
@@ -213,7 +213,7 @@ export default function LedgerPage() {
                   ? pendingDelete.worker?.name
                   : pendingDelete.category?.name,
                 pendingDelete.description,
-                formatDate(pendingDelete.entry_date),
+                formatEntryDate(pendingDelete.entry_date, pendingDelete.entry_date_end),
               ]
                 .filter(Boolean)
                 .join("\n")

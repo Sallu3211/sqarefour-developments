@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatEntryDate, formatMoney } from "@/lib/format";
 import { ENTRY_TYPE_LABELS, ENTRY_TYPE_STYLES } from "@/lib/constants";
 import type { EntryWithRelations } from "@/lib/types";
 
@@ -31,7 +31,8 @@ export function EntryRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-slate-800">{title}</p>
         <p className="truncate text-xs text-slate-400">
-          {entry.description || ENTRY_TYPE_LABELS[entry.type]} · {formatDate(entry.entry_date)}
+          {entry.description || ENTRY_TYPE_LABELS[entry.type]} ·{" "}
+          {formatEntryDate(entry.entry_date, entry.entry_date_end)}
         </p>
       </div>
       <p className="shrink-0 text-sm font-bold text-slate-900">{formatMoney(entry.amount)}</p>

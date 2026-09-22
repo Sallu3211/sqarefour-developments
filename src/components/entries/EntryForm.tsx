@@ -6,7 +6,7 @@ import { useSites } from "@/context/SiteContext";
 import { useToast } from "@/context/ToastContext";
 import { useDraft } from "@/hooks/useDraft";
 import { supabase } from "@/lib/supabase/client";
-import { datesInRange, formatMoney, relativeTime, todayISO } from "@/lib/format";
+import { formatEntryDate, formatMoney, relativeTime, todayISO } from "@/lib/format";
 import { ENTRY_TYPE_STYLES, WORKER_ROLES } from "@/lib/constants";
 import type { Category, EntryType, Worker } from "@/lib/types";
 import { Button, Card, Field, Input } from "@/components/ui/Primitives";
@@ -203,22 +203,6 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
     const categoryLabel = categories.find((c) => c.id === line.categoryId)?.name || null;
     const workerLabel = workers.find((w) => w.id === line.workerId)?.name || null;
 
-    if (line.type === "labour" && line.multiDay) {
-      const dates = datesInRange(line.entryDate, line.endDate);
-      const newItems: PendingItem[] = dates.map((d) => ({
-        ...line,
-        entryDate: d,
-        localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${d}`,
-        categoryLabel,
-        workerLabel,
-        photo: null,
-      }));
-      setItems((list) => [...list, ...newItems]);
-      resetLine();
-      show(`Added ${dates.length} days to list`, "info");
-      return;
-    }
-
     const item: PendingItem = {
       ...line,
       localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -257,6 +241,7 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
       rows.push({
         site_id: selectedSiteId,
         entry_date: item.entryDate,
+        entry_date_end: item.type === "labour" && item.multiDay ? item.endDate : null,
         type: item.type,
         category_id: item.categoryId,
         worker_id: item.type === "labour" ? item.workerId : null,
@@ -277,9 +262,9 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
       return;
     }
 
-    const dates = items.map((i) => i.entryDate).sort();
-    const start = dates[0];
-    const end = dates[dates.length - 1];
+    const allDates = items.flatMap((i) => (i.multiDay && i.type === "labour" ? [i.entryDate, i.endDate] : [i.entryDate])).sort();
+    const start = allDates[0];
+    const end = allDates[allDates.length - 1];
 
     show(`Saved ${rows.length} ${rows.length === 1 ? "entry" : "entries"}`, "success", {
       label: "View Bill",
@@ -292,10 +277,6 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
   const categoryOptions = categories.map((c) => ({ id: c.id, label: c.name }));
   const workerOptions = workers.map((w) => ({ id: w.id, label: w.name, sublabel: w.role }));
   const listTotal = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-  const multiDayCount =
-    line.type === "labour" && line.multiDay && line.endDate >= line.entryDate
-      ? datesInRange(line.entryDate, line.endDate).length
-      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -325,7 +306,7 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
 
           {line.type === "labour" && (
             <label className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5">
-              <span className="text-sm font-semibold text-slate-700">Multiple days (same amount each day)</span>
+              <span className="text-sm font-semibold text-slate-700">Multiple days (e.g. overtime) — one total amount</span>
               <button
                 type="button"
                 role="switch"
@@ -435,7 +416,16 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
             </div>
           )}
 
-          <Field label="Amount" hint={autoAmount && !amountTouched ? "Auto-calculated from quantity × price" : undefined}>
+          <Field
+            label={line.type === "labour" && line.multiDay ? "Total Amount for this period" : "Amount"}
+            hint={
+              line.type === "labour" && line.multiDay
+                ? "Enter the total you're paying for the whole range — it's not split or calculated per day"
+                : autoAmount && !amountTouched
+                  ? "Auto-calculated from quantity × price"
+                  : undefined
+            }
+          >
             <Input
               inputMode="decimal"
               value={line.amount}
@@ -448,20 +438,18 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
             />
           </Field>
 
-          {!(line.type === "labour" && line.multiDay) && (
-            <Field label="Receipt Photo" hint="Optional">
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-                className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-700"
-              />
-            </Field>
-          )}
+          <Field label="Receipt Photo" hint="Optional">
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-700"
+            />
+          </Field>
 
           <Button type="submit" variant="secondary" size="lg" className="w-full">
-            {multiDayCount ? `+ Add ${multiDayCount} Days to List` : "+ Add to List"}
+            + Add to List
           </Button>
         </form>
       </Card>
@@ -483,7 +471,10 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-800">{title}</p>
-                    <p className="truncate text-xs text-slate-400">{item.description || "—"} · {item.entryDate}</p>
+                    <p className="truncate text-xs text-slate-400">
+                      {item.description || "—"} ·{" "}
+                      {formatEntryDate(item.entryDate, item.multiDay ? item.endDate : null)}
+                    </p>
                   </div>
                   <p className="shrink-0 text-sm font-bold text-slate-900">{formatMoney(parseFloat(item.amount) || 0)}</p>
                   <button

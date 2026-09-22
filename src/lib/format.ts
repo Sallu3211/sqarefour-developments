@@ -1,5 +1,4 @@
 import {
-  eachDayOfInterval,
   endOfMonth,
   endOfWeek,
   endOfYear,
@@ -29,6 +28,15 @@ export function formatDate(iso: string): string {
   return format(parseISO(iso), "d MMM yyyy");
 }
 
+/** For an entry that may span a date range, e.g. "17 – 20 Sep 2026". */
+export function formatEntryDate(start: string, end?: string | null): string {
+  if (!end || end === start) return formatDate(start);
+  const s = parseISO(start);
+  const e = parseISO(end);
+  const sameMonth = format(s, "yyyy-MM") === format(e, "yyyy-MM");
+  return sameMonth ? `${format(s, "d")} – ${format(e, "d MMM yyyy")}` : `${formatDate(start)} – ${formatDate(end)}`;
+}
+
 export function formatDateTime(iso: string): string {
   return format(parseISO(iso), "d MMM yyyy, h:mm a");
 }
@@ -56,12 +64,6 @@ export function yearRange(date: Date = new Date()) {
     start: format(startOfYear(date), "yyyy-MM-dd"),
     end: format(endOfYear(date), "yyyy-MM-dd"),
   };
-}
-
-/** Inclusive list of yyyy-MM-dd dates from start to end. */
-export function datesInRange(startISO: string, endISO: string): string[] {
-  const days = eachDayOfInterval({ start: parseISO(startISO), end: parseISO(endISO) });
-  return days.map((d) => format(d, "yyyy-MM-dd"));
 }
 
 export function dayRange(date: Date = new Date()) {

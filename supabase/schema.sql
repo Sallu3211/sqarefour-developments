@@ -42,6 +42,7 @@ create table if not exists entries (
   id uuid primary key default gen_random_uuid(),
   site_id uuid not null references sites(id) on delete cascade,
   entry_date date not null default current_date,
+  entry_date_end date,
   type text not null check (type in ('purchase','labour','other')),
   category_id uuid references categories(id) on delete set null,
   worker_id uuid references workers(id) on delete set null,
@@ -56,6 +57,10 @@ create table if not exists entries (
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
 );
+
+-- Added later for date-range labour/overtime entries — this line applies
+-- to a database that already ran the schema before entry_date_end existed.
+alter table entries add column if not exists entry_date_end date;
 
 create table if not exists bills (
   id uuid primary key default gen_random_uuid(),

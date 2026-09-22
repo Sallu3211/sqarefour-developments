@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { formatDateTime, formatEntryDate, formatMoney } from "@/lib/format";
 import { ENTRY_TYPE_LABELS } from "@/lib/constants";
 import type { EntryType, EntryWithRelations, Site } from "@/lib/types";
 import { Logo } from "@/components/ui/Logo";
@@ -69,7 +69,9 @@ export const BillTemplate = forwardRef<
                   <tbody>
                     {rows.map((e) => (
                       <tr key={e.id} className="border-b border-slate-100">
-                        <td className="whitespace-nowrap py-1.5 pr-2 text-slate-500">{formatDate(e.entry_date)}</td>
+                        <td className="whitespace-nowrap py-1.5 pr-2 text-slate-500">
+                          {formatEntryDate(e.entry_date, e.entry_date_end)}
+                        </td>
                         <td className="py-1.5 pr-2 font-medium">{lineLabel(e)}</td>
                         <td className="py-1.5 pr-2 text-slate-500">{e.description || "—"}</td>
                         <td className="py-1.5 text-right font-semibold">{formatMoney(e.amount)}</td>
