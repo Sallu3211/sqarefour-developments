@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
 import { Button, Card, Field, Input } from "@/components/ui/Primitives";
-import { BrandLogo } from "@/components/ui/BrandLogo";
 import { Logo } from "@/components/ui/Logo";
 import { Spinner } from "@/components/ui/Primitives";
 
@@ -65,7 +64,8 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <Card className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <BrandLogo size={56} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.jpg" alt="Squarefour Developments" className="h-14 w-14 rounded-xl object-cover" />
           <h1 className="text-lg font-bold text-slate-900">Set a New Password</h1>
         </div>
 

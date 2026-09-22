@@ -6,7 +6,6 @@ import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Button, Card, Field, Input } from "@/components/ui/Primitives";
 import { Logo } from "@/components/ui/Logo";
-import { BrandLogo } from "@/components/ui/BrandLogo";
 
 export default function LoginPage() {
   const { user, loading, signIn, requestPasswordReset } = useAuth();
@@ -64,7 +63,11 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <Card className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <BrandLogo size={56} />
+          {/* Static bundled asset, not the Supabase-hosted one: the login
+              screen renders before authentication, and branding data is
+              RLS-protected (requires a session to read). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.jpg" alt="Squarefour Developments" className="h-14 w-14 rounded-xl object-cover" />
           <div className="text-center">
             <h1 className="text-lg font-bold text-slate-900">Squarefour Developments</h1>
             <p className="text-sm text-slate-500">Site finance &amp; billing</p>
