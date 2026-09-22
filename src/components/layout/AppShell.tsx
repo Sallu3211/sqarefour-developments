@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
         <Logo size={56} />
         <h1 className="text-xl font-bold text-slate-900">Almost there</h1>
         <p className="text-sm text-slate-500">
@@ -57,14 +57,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <Spinner className="h-8 w-8 text-amber-500" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-dvh flex-col bg-slate-50">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3">
           <BrandLogo size={38} />
@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-24 pt-4 sm:pb-8">{children}</main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom,0px)] sm:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 [transform:translateZ(0)] border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom,0px)] sm:hidden">
         <div className="mx-auto flex max-w-4xl">
           {NAV.map((item) => {
             const active = pathname === item.href;

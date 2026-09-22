@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
         <Logo size={56} />
         <p className="text-sm text-slate-500">Supabase isn&apos;t configured yet.</p>
       </div>
@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4">
       <Card className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}

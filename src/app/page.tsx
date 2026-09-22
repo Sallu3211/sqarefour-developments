@@ -19,7 +19,7 @@ export default function Home() {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
         <Logo size={56} />
         <h1 className="text-xl font-bold text-slate-900">Almost there</h1>
         <p className="text-sm text-slate-500">
@@ -32,7 +32,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div className="flex min-h-dvh items-center justify-center">
       <Spinner className="h-8 w-8 text-amber-500" />
     </div>
   );
