@@ -40,9 +40,9 @@ export default function LedgerPage() {
       .from("entries")
       .select("*, category:categories(*), worker:workers(*)")
       .eq("site_id", selectedSiteId)
-      .gte("entry_date", period.start)
-      .lte("entry_date", period.end)
-      .order("entry_date", { ascending: false })
+      .gte("effective_date", period.start)
+      .lte("effective_date", period.end)
+      .order("effective_date", { ascending: false })
       .order("created_at", { ascending: false });
     setEntries((data as EntryWithRelations[]) || []);
     setLoading(false);

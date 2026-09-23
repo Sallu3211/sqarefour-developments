@@ -34,6 +34,8 @@ export interface Entry {
   site_id: string;
   entry_date: string;
   entry_date_end: string | null;
+  /** coalesce(entry_date_end, entry_date) — the date reports/bills actually filter and sort by. */
+  effective_date: string;
   type: EntryType;
   category_id: string | null;
   worker_id: string | null;

@@ -62,6 +62,13 @@ create table if not exists entries (
 -- to a database that already ran the schema before entry_date_end existed.
 alter table entries add column if not exists entry_date_end date;
 
+-- The date that actually drives totals/reports/bills: the end of the work
+-- range when one is set (the day the payment covers up to), otherwise the
+-- single entry date. Kept in sync automatically by Postgres — the app
+-- never writes to this column directly, only entry_date/entry_date_end.
+alter table entries add column if not exists effective_date date
+  generated always as (coalesce(entry_date_end, entry_date)) stored;
+
 create table if not exists bills (
   id uuid primary key default gen_random_uuid(),
   site_id uuid not null references sites(id) on delete cascade,
@@ -93,6 +100,7 @@ create table if not exists app_settings (
 -- ---------------------------------------------------------------------
 
 create index if not exists entries_site_date_idx on entries (site_id, entry_date);
+create index if not exists entries_site_effective_date_idx on entries (site_id, effective_date);
 create index if not exists entries_worker_idx on entries (worker_id);
 create index if not exists entries_type_idx on entries (type);
 create index if not exists bills_site_idx on bills (site_id);

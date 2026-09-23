@@ -35,9 +35,9 @@ export default function WorkerDetailPage() {
           .select("*, category:categories(*), worker:workers(*)")
           .eq("worker_id", params.id)
           .is("deleted_at", null)
-          .gte("entry_date", period.start)
-          .lte("entry_date", period.end)
-          .order("entry_date", { ascending: false }),
+          .gte("effective_date", period.start)
+          .lte("effective_date", period.end)
+          .order("effective_date", { ascending: false }),
       ]);
       if (cancelled) return;
       setWorker(workerRes.data as WorkerWithSite);

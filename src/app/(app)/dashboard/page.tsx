@@ -45,14 +45,14 @@ export default function DashboardPage() {
           .select("amount")
           .eq("site_id", selectedSiteId)
           .is("deleted_at", null)
-          .eq("entry_date", today),
+          .eq("effective_date", today),
         supabase
           .from("entries")
           .select("amount")
           .eq("site_id", selectedSiteId)
           .is("deleted_at", null)
-          .gte("entry_date", start)
-          .lte("entry_date", today),
+          .gte("effective_date", start)
+          .lte("effective_date", today),
         supabase
           .from("entries")
           .select("*, category:categories(*), worker:workers(*)")

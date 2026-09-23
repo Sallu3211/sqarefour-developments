@@ -51,9 +51,9 @@ function BillPageInner() {
         .select("*, category:categories(*), worker:workers(*)")
         .eq("site_id", selectedSiteId)
         .is("deleted_at", null)
-        .gte("entry_date", period.start)
-        .lte("entry_date", period.end)
-        .order("entry_date", { ascending: true });
+        .gte("effective_date", period.start)
+        .lte("effective_date", period.end)
+        .order("effective_date", { ascending: true });
       if (cancelled) return;
       setEntries((data as EntryWithRelations[]) || []);
       setLoading(false);
