@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Button, Card, Field, Input } from "@/components/ui/Primitives";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Logo } from "@/components/ui/Logo";
 
 export default function LoginPage() {
@@ -25,7 +26,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { error } = await signIn(email.trim(), password);
+    const { error } = await signIn(email.trim().toLowerCase(), password);
     setSubmitting(false);
     if (error) {
       setError(error);
@@ -38,7 +39,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { error } = await requestPasswordReset(email.trim());
+    const { error } = await requestPasswordReset(email.trim().toLowerCase());
     setSubmitting(false);
     if (error) {
       setError(error);
@@ -79,6 +80,8 @@ export default function LoginPage() {
               <Input
                 type="email"
                 autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -86,8 +89,7 @@ export default function LoginPage() {
               />
             </Field>
             <Field label="Password">
-              <Input
-                type="password"
+              <PasswordInput
                 autoComplete="current-password"
                 required
                 value={password}
@@ -134,6 +136,8 @@ export default function LoginPage() {
               <Input
                 type="email"
                 autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
-import { Button, Card, Field, Input } from "@/components/ui/Primitives";
+import { Button, Card, Field } from "@/components/ui/Primitives";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Logo } from "@/components/ui/Logo";
 import { Spinner } from "@/components/ui/Primitives";
 
@@ -84,8 +85,7 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Field label="New Password">
-              <Input
-                type="password"
+              <PasswordInput
                 autoComplete="new-password"
                 required
                 value={password}
@@ -94,8 +94,7 @@ export default function ResetPasswordPage() {
               />
             </Field>
             <Field label="Confirm New Password">
-              <Input
-                type="password"
+              <PasswordInput
                 autoComplete="new-password"
                 required
                 value={confirmPassword}
