@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase/client";
 import { formatEntryDate, formatMoney, todayISO } from "@/lib/format";
 import { WORKER_ROLES } from "@/lib/constants";
@@ -18,6 +19,7 @@ export function EditEntryModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { isViewer: readOnly } = useAuth();
   const [entryDate, setEntryDate] = useState(entry.entry_date);
   const [multiDay, setMultiDay] = useState(!!entry.entry_date_end && entry.entry_date_end !== entry.entry_date);
   const [endDate, setEndDate] = useState(entry.entry_date_end || entry.entry_date);
@@ -165,12 +167,28 @@ export function EditEntryModal({
   const workerOptions = workers.map((w) => ({ id: w.id, label: w.name, sublabel: w.role }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-bold text-slate-900">Edit Entry</h3>
-        <div className="mt-4 flex flex-col gap-4">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:max-h-[85dvh] sm:max-w-md sm:rounded-2xl">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+          <h3 className="text-lg font-bold text-slate-900">{readOnly ? "Entry Details" : "Edit Entry"}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-2 shrink-0 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+        <fieldset disabled={readOnly} className="flex min-w-0 flex-col gap-4">
           {entry.type === "labour" && (
-            <label className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5">
+            <label className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
               <span className="text-sm font-semibold text-slate-700">Multiple days (e.g. overtime)</span>
               <button
                 type="button"
@@ -194,7 +212,7 @@ export function EditEntryModal({
           )}
 
           {entry.type === "labour" && multiDay ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
               <Field label="Start Date">
                 <Input type="date" value={entryDate} max={todayISO()} onChange={(e) => setEntryDate(e.target.value)} />
               </Field>
@@ -221,7 +239,7 @@ export function EditEntryModal({
                 onChange={setWorkerId}
                 options={workerOptions}
                 placeholder="Search or add a worker..."
-                onCreate={handleCreateWorker}
+                onCreate={readOnly ? undefined : handleCreateWorker}
                 creating={creatingOption}
               />
             </Field>
@@ -232,7 +250,7 @@ export function EditEntryModal({
                 onChange={setCategoryId}
                 options={categoryOptions}
                 placeholder="Search or add a category..."
-                onCreate={handleCreateCategory}
+                onCreate={readOnly ? undefined : handleCreateCategory}
                 creating={creatingOption}
               />
             </Field>
@@ -243,7 +261,7 @@ export function EditEntryModal({
           </Field>
 
           {entry.type === "purchase" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
               <Field label="Quantity" hint="Optional">
                 <Input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
               </Field>
@@ -280,15 +298,24 @@ export function EditEntryModal({
           )}
 
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+        </fieldset>
+        </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={onClose}>
-              Cancel
+        <div className="border-t border-slate-100 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 sm:px-5 sm:pb-4">
+          {readOnly ? (
+            <Button variant="secondary" onClick={onClose} className="w-full sm:ml-auto sm:flex sm:w-auto">
+              Close
             </Button>
-            <Button onClick={handleReviewChanges} disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+              <Button variant="secondary" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button onClick={handleReviewChanges} disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

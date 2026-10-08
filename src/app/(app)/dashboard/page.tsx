@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useSites } from "@/context/SiteContext";
 import { supabase } from "@/lib/supabase/client";
 import { formatMoney, todayISO, weekRange } from "@/lib/format";
@@ -13,14 +14,17 @@ import { EditEntryModal } from "@/components/entries/EditEntryModal";
 import { IconList, IconPlus, IconReceipt, IconUsers } from "@/components/layout/NavIcons";
 
 const QUICK_ACTIONS = [
-  { href: "/entries/new?type=purchase", label: "Add Purchase", icon: IconPlus, style: ENTRY_TYPE_STYLES.purchase },
-  { href: "/entries/new?type=labour", label: "Add Labour / Mason", icon: IconUsers, style: ENTRY_TYPE_STYLES.labour },
-  { href: "/entries/new?type=other", label: "Add Other Expense", icon: IconReceipt, style: ENTRY_TYPE_STYLES.other },
-  { href: "/bill", label: "View / Print Bill", icon: IconList, style: { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-200", dot: "" } },
+  { href: "/entries/new?type=purchase", label: "Add Purchase", icon: IconPlus, style: ENTRY_TYPE_STYLES.purchase, editorOnly: true, viewerOnly: false },
+  { href: "/entries/new?type=labour", label: "Add Labour / Mason", icon: IconUsers, style: ENTRY_TYPE_STYLES.labour, editorOnly: true, viewerOnly: false },
+  { href: "/entries/new?type=other", label: "Add Other Expense", icon: IconReceipt, style: ENTRY_TYPE_STYLES.other, editorOnly: true, viewerOnly: false },
+  { href: "/bill", label: "View / Print Bill", icon: IconList, style: { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-200", dot: "" }, editorOnly: false, viewerOnly: false },
+  { href: "/ledger", label: "Site Ledger", icon: IconList, style: { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-200", dot: "" }, editorOnly: false, viewerOnly: true },
 ];
 
 export default function DashboardPage() {
+  const { isViewer } = useAuth();
   const { selectedSite, selectedSiteId, loading: sitesLoading } = useSites();
+  const actions = QUICK_ACTIONS.filter((a) => (isViewer ? !a.editorOnly : !a.viewerOnly));
   const [loading, setLoading] = useState(true);
   const [todayTotal, setTodayTotal] = useState(0);
   const [weekTotal, setWeekTotal] = useState(0);
@@ -86,7 +90,11 @@ export default function DashboardPage() {
     return (
       <EmptyState
         title="Add your first construction site"
-        description="Use the site picker at the top to add a site — then you can start logging purchases and labour payments."
+        description={
+          isViewer
+            ? "There are no sites to show yet."
+            : "Use the site picker at the top to add a site — then you can start logging purchases and labour payments."
+        }
       />
     );
   }
@@ -94,32 +102,32 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">{selectedSite?.name}</h1>
+        <h1 className="break-words text-xl font-bold text-slate-900 sm:text-2xl">{selectedSite?.name}</h1>
         <p className="text-sm text-slate-500">Here&apos;s what&apos;s happening on this site</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Card className="text-center">
+        <Card className="min-w-0 text-center">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Today</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{formatMoney(todayTotal)}</p>
+          <p className="mt-1 break-all text-lg font-bold text-slate-900 min-[380px]:text-xl sm:text-2xl">{formatMoney(todayTotal)}</p>
         </Card>
-        <Card className="text-center">
+        <Card className="min-w-0 text-center">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">This Week</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{formatMoney(weekTotal)}</p>
+          <p className="mt-1 break-all text-lg font-bold text-slate-900 min-[380px]:text-xl sm:text-2xl">{formatMoney(weekTotal)}</p>
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {QUICK_ACTIONS.map((a) => (
+      <div className={`grid grid-cols-2 gap-3 ${actions.length >= 4 ? "md:grid-cols-4" : ""}`}>
+        {actions.map((a) => (
           <Link
             key={a.href}
             href={a.href}
-            className={`flex flex-col items-start gap-3 rounded-2xl p-4 ring-1 ring-inset transition active:scale-[0.98] ${a.style.bg} ${a.style.ring}`}
+            className={`flex min-w-0 flex-col items-start gap-2.5 rounded-2xl p-3.5 ring-1 ring-inset transition active:scale-[0.98] sm:gap-3 sm:p-4 ${a.style.bg} ${a.style.ring}`}
           >
             <span className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white ${a.style.text}`}>
               <a.icon className="h-5 w-5" />
             </span>
-            <span className={`text-sm font-semibold ${a.style.text}`}>{a.label}</span>
+            <span className={`text-sm font-semibold leading-snug ${a.style.text}`}>{a.label}</span>
           </Link>
         ))}
       </div>
@@ -138,7 +146,11 @@ export default function DashboardPage() {
         ) : recent.length === 0 ? (
           <EmptyState
             title="No entries yet"
-            description="Tap one of the buttons above to log your first purchase or payment."
+            description={
+              isViewer
+                ? "Nothing has been logged for this site yet."
+                : "Tap one of the buttons above to log your first purchase or payment."
+            }
           />
         ) : (
           <div className="flex flex-col gap-2">

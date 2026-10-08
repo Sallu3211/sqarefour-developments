@@ -24,21 +24,21 @@ export const BillTemplate = forwardRef<
   const grandTotal = entries.reduce((s, e) => s + Number(e.amount), 0);
 
   return (
-    <div ref={ref} className="w-full bg-white p-6 text-slate-900 sm:p-8" style={{ minWidth: 320 }}>
-      <div className="flex items-start justify-between gap-4 border-b-2 border-slate-900 pb-4">
-        <div className="flex items-center gap-3">
+    <div ref={ref} className="w-full bg-white p-4 text-slate-900 sm:p-8" style={{ minWidth: 340 }}>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b-2 border-slate-900 pb-4">
+        <div className="flex min-w-0 items-center gap-3">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={companyName} className="h-12 w-12 rounded-xl object-contain" />
+            <img src={logoUrl} alt={companyName} className="h-12 w-12 shrink-0 rounded-xl object-contain" />
           ) : (
             <Logo size={48} />
           )}
-          <div>
-            <p className="text-lg font-black leading-tight">{companyName}</p>
+          <div className="min-w-0">
+            <p className="text-base font-black leading-tight sm:text-lg">{companyName}</p>
             <p className="text-xs text-slate-500">Site Finance &amp; Billing Statement</p>
           </div>
         </div>
-        <div className="text-right">
+        <div className="ml-auto text-right">
           <p className="text-base font-bold">{site?.name || "—"}</p>
           <p className="text-xs text-slate-500">{periodLabel}</p>
         </div>
@@ -57,7 +57,7 @@ export const BillTemplate = forwardRef<
                 <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
                   {ENTRY_TYPE_LABELS[type]}
                 </p>
-                <table className="w-full border-collapse text-sm">
+                <table className="w-full border-collapse text-xs sm:text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-xs text-slate-400">
                       <th className="py-1.5 font-medium">Date</th>
@@ -73,8 +73,8 @@ export const BillTemplate = forwardRef<
                           {formatEntryDate(e.entry_date, e.entry_date_end)}
                         </td>
                         <td className="py-1.5 pr-2 font-medium">{lineLabel(e)}</td>
-                        <td className="py-1.5 pr-2 text-slate-500">{e.description || "—"}</td>
-                        <td className="py-1.5 text-right font-semibold">{formatMoney(e.amount)}</td>
+                        <td className="break-words py-1.5 pr-2 text-slate-500">{e.description || "—"}</td>
+                        <td className="whitespace-nowrap py-1.5 text-right font-semibold">{formatMoney(e.amount)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -89,9 +89,9 @@ export const BillTemplate = forwardRef<
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-between rounded-xl bg-slate-900 px-4 py-3 text-white">
+      <div className="mt-6 flex items-center justify-between gap-3 rounded-xl bg-slate-900 px-4 py-3 text-white">
         <span className="text-sm font-semibold uppercase tracking-wide">Grand Total</span>
-        <span className="text-xl font-black">{formatMoney(grandTotal)}</span>
+        <span className="whitespace-nowrap text-lg font-black sm:text-xl">{formatMoney(grandTotal)}</span>
       </div>
 
       <p className="mt-4 text-center text-[11px] text-slate-400">

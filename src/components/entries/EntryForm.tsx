@@ -281,11 +281,11 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
   return (
     <div className="flex flex-col gap-4">
       {draft.recoverable && (
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm ring-1 ring-inset ring-amber-200">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl bg-amber-50 px-4 py-3 text-sm ring-1 ring-inset ring-amber-200">
           <span className="text-amber-800">
             You have unsaved work from {relativeTime(draft.recoverable.savedAt)}.
           </span>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 gap-4">
             <button onClick={restoreDraft} className="font-semibold text-amber-800 underline">
               Restore
             </button>
@@ -305,7 +305,7 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
           </Field>
 
           {line.type === "labour" && (
-            <label className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5">
+            <label className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
               <span className="text-sm font-semibold text-slate-700">Multiple days (e.g. overtime) — one total amount</span>
               <button
                 type="button"
@@ -328,7 +328,7 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
           )}
 
           {line.type === "labour" && line.multiDay ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
               <Field label="Start Date">
                 <Input
                   type="date"
@@ -396,7 +396,7 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
           </Field>
 
           {line.type === "purchase" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
               <Field label="Quantity" hint="Optional">
                 <Input
                   inputMode="decimal"
@@ -456,18 +456,18 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
 
       {items.length > 0 && (
         <Card className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-bold text-slate-700">
               {items.length} {items.length === 1 ? "item" : "items"} ready to save
             </p>
-            <p className="text-sm font-bold text-slate-900">{formatMoney(listTotal)}</p>
+            <p className="shrink-0 text-sm font-bold text-slate-900">{formatMoney(listTotal)}</p>
           </div>
           <div className="flex flex-col gap-2">
             {items.map((item) => {
               const style = ENTRY_TYPE_STYLES[item.type];
               const title = item.type === "labour" ? item.workerLabel || "Worker" : item.categoryLabel || "—";
               return (
-                <div key={item.localId} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <div key={item.localId} className="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-800">{title}</p>
@@ -480,7 +480,7 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
                   <button
                     onClick={() => removeItem(item.localId)}
                     aria-label="Remove"
-                    className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                    className="-mr-1 shrink-0 rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -498,7 +498,7 @@ export function EntryForm({ initialType }: { initialType: EntryType }) {
 
       <button
         onClick={() => router.push("/ledger")}
-        className="text-center text-sm font-semibold text-slate-500"
+        className="py-2 text-center text-sm font-semibold text-slate-500"
       >
         View site ledger instead
       </button>

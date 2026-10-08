@@ -54,7 +54,7 @@ export default function WorkerDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <button onClick={() => router.push("/workers")} className="text-sm font-semibold text-slate-500">
+      <button onClick={() => router.push("/workers")} className="self-start py-1 text-sm font-semibold text-slate-500">
         ← All workers
       </button>
 
@@ -65,8 +65,8 @@ export default function WorkerDetailPage() {
       ) : worker ? (
         <>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">{worker.name}</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="break-words text-xl font-bold text-slate-900 sm:text-2xl">{worker.name}</h1>
+            <p className="break-words text-sm text-slate-500">
               {worker.role}
               {worker.site ? ` · ${worker.site.name}` : ""}
               {worker.phone ? ` · ${worker.phone}` : ""}
@@ -75,9 +75,9 @@ export default function WorkerDetailPage() {
 
           <PeriodFilter value={period} onChange={setPeriod} />
 
-          <Card className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-slate-500">Total Paid</span>
-            <span className="text-2xl font-bold text-slate-900">{formatMoney(total)}</span>
+          <Card className="flex items-center justify-between gap-3">
+            <span className="shrink-0 text-sm font-semibold text-slate-500">Total Paid</span>
+            <span className="min-w-0 break-all text-right text-xl font-bold text-slate-900 sm:text-2xl">{formatMoney(total)}</span>
           </Card>
 
           {loading ? (

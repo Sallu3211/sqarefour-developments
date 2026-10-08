@@ -35,8 +35,8 @@ export function PeriodFilter({
   onChange: (v: PeriodValue) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
         {OPTIONS.map((o) => (
           <button
             key={o.type}
@@ -54,14 +54,14 @@ export function PeriodFilter({
         ))}
       </div>
       {value.type === "custom" && (
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:max-w-md">
           <Input
             type="date"
             value={value.start}
             max={value.end}
             onChange={(e) => onChange({ ...value, start: e.target.value })}
           />
-          <span className="text-slate-400">to</span>
+          <span className="text-sm text-slate-400">to</span>
           <Input
             type="date"
             value={value.end}

@@ -14,13 +14,14 @@ import { Logo } from "@/components/ui/Logo";
 import { IconEdit } from "@/components/layout/NavIcons";
 import clsx from "clsx";
 
-type Tab = "sites" | "categories" | "workers" | "branding";
+type Tab = "sites" | "categories" | "workers" | "branding" | "viewers";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "sites", label: "Sites" },
   { id: "categories", label: "Categories" },
   { id: "workers", label: "Workers" },
   { id: "branding", label: "Branding" },
+  { id: "viewers", label: "Viewer Access" },
 ];
 
 export default function SettingsPage() {
@@ -28,8 +29,8 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-slate-900">Settings</h1>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Settings</h1>
+      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -48,6 +49,7 @@ export default function SettingsPage() {
       {tab === "categories" && <CategoriesTab />}
       {tab === "workers" && <WorkersTab />}
       {tab === "branding" && <BrandingTab />}
+      {tab === "viewers" && <ViewersTab />}
     </div>
   );
 }
@@ -117,29 +119,31 @@ function SitesTab() {
     <div className="flex flex-col gap-3">
       <Card className="flex gap-2">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New site name" />
-        <Button onClick={handleAdd} disabled={saving || !name.trim()}>
+        <Button className="shrink-0" onClick={handleAdd} disabled={saving || !name.trim()}>
           Add
         </Button>
       </Card>
       {sites.map((s) =>
         editingId === s.id ? (
-          <div key={s.id} className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
-            <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus className="flex-1" />
-            <Button size="sm" onClick={() => requestSave(s)} disabled={editSaving || !editName.trim()}>
-              Save
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>
-              Cancel
-            </Button>
+          <div key={s.id} className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:p-3.5">
+            <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus className="sm:flex-1" />
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <Button size="sm" onClick={() => requestSave(s)} disabled={editSaving || !editName.trim()}>
+                Save
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>
+                Cancel
+              </Button>
+            </div>
           </div>
         ) : (
-          <div key={s.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
-            <span className="font-medium text-slate-800">{s.name}</span>
-            <div className="flex items-center gap-3">
-              <button onClick={() => startEdit(s)} aria-label="Edit site" className="text-slate-400 hover:text-amber-600">
+          <div key={s.id} className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-3.5 pr-1.5">
+            <span className="min-w-0 truncate font-medium text-slate-800">{s.name}</span>
+            <div className="flex shrink-0 items-center">
+              <button onClick={() => startEdit(s)} aria-label="Edit site" className="rounded-lg p-2.5 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
                 <IconEdit className="h-4 w-4" />
               </button>
-              <button onClick={() => setPendingRemove(s)} className="text-xs font-semibold text-red-500">
+              <button onClick={() => setPendingRemove(s)} className="rounded-lg px-2.5 py-2 text-xs font-semibold text-red-500 hover:bg-red-50">
                 Remove
               </button>
             </div>
@@ -260,7 +264,7 @@ function CategoriesTab() {
               key={t}
               onClick={() => setType(t)}
               className={clsx(
-                "flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold capitalize",
+                "flex-1 rounded-lg px-2 py-2 text-xs font-semibold capitalize",
                 type === t ? "bg-amber-500 text-slate-900" : "bg-slate-100 text-slate-600"
               )}
             >
@@ -285,7 +289,7 @@ function CategoriesTab() {
                     key={t}
                     onClick={() => setEditType(t)}
                     className={clsx(
-                      "flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold capitalize",
+                      "flex-1 rounded-lg px-2 py-2 text-xs font-semibold capitalize",
                       editType === t ? "bg-amber-500 text-slate-900" : "bg-white text-slate-600"
                     )}
                   >
@@ -293,7 +297,7 @@ function CategoriesTab() {
                   </button>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
                 <Button size="sm" onClick={() => requestSave(c)} disabled={editSaving || !editName.trim()}>
                   Save
                 </Button>
@@ -303,16 +307,16 @@ function CategoriesTab() {
               </div>
             </div>
           ) : (
-            <div key={c.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
-              <div>
-                <p className="font-medium text-slate-800">{c.name}</p>
+            <div key={c.id} className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white py-2 pl-3.5 pr-1.5">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-slate-800">{c.name}</p>
                 <p className="text-xs capitalize text-slate-400">{c.type}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => startEdit(c)} aria-label="Edit category" className="text-slate-400 hover:text-amber-600">
+              <div className="flex shrink-0 items-center">
+                <button onClick={() => startEdit(c)} aria-label="Edit category" className="rounded-lg p-2.5 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
                   <IconEdit className="h-4 w-4" />
                 </button>
-                <button onClick={() => setPendingRemove(c)} className="text-xs font-semibold text-red-500">
+                <button onClick={() => setPendingRemove(c)} className="rounded-lg px-2.5 py-2 text-xs font-semibold text-red-500 hover:bg-red-50">
                   Remove
                 </button>
               </div>
@@ -449,7 +453,7 @@ function WorkersTab() {
     <div className="flex flex-col gap-3">
       <Card className="flex flex-col gap-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Worker name" />
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex flex-wrap gap-2">
           {WORKER_ROLES.map((r) => (
             <button
               key={r}
@@ -487,7 +491,7 @@ function WorkersTab() {
           editingId === w.id ? (
             <div key={w.id} className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex flex-wrap gap-2">
                 {WORKER_ROLES.map((r) => (
                   <button
                     key={r}
@@ -514,7 +518,7 @@ function WorkersTab() {
                 }}
                 creating={editCreatingSite}
               />
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
                 <Button size="sm" onClick={() => requestSave(w)} disabled={editSaving || !editName.trim()}>
                   Save
                 </Button>
@@ -524,19 +528,19 @@ function WorkersTab() {
               </div>
             </div>
           ) : (
-            <div key={w.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5">
-              <div>
-                <p className="font-medium text-slate-800">{w.name}</p>
-                <p className="text-xs text-slate-400">
+            <div key={w.id} className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white py-2 pl-3.5 pr-1.5">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-slate-800">{w.name}</p>
+                <p className="truncate text-xs text-slate-400">
                   {w.role}
                   {w.site ? ` · ${w.site.name}` : ""}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => startEdit(w)} aria-label="Edit worker" className="text-slate-400 hover:text-amber-600">
+              <div className="flex shrink-0 items-center">
+                <button onClick={() => startEdit(w)} aria-label="Edit worker" className="rounded-lg p-2.5 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
                   <IconEdit className="h-4 w-4" />
                 </button>
-                <button onClick={() => setPendingRemove(w)} className="text-xs font-semibold text-red-500">
+                <button onClick={() => setPendingRemove(w)} className="rounded-lg px-2.5 py-2 text-xs font-semibold text-red-500 hover:bg-red-50">
                   Remove
                 </button>
               </div>
@@ -593,7 +597,7 @@ function BrandingTab() {
 
   return (
     <Card className="flex flex-col gap-4">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         {branding.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={branding.logoUrl} alt="Logo" className="h-16 w-16 rounded-xl object-contain ring-1 ring-slate-200" />
@@ -612,9 +616,172 @@ function BrandingTab() {
         <label className="mb-1.5 block text-sm font-semibold text-slate-700">Company Name</label>
         <div className="flex gap-2">
           <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-          <Button onClick={saveName}>Save</Button>
+          <Button className="shrink-0" onClick={saveName}>Save</Button>
         </div>
       </div>
     </Card>
+  );
+}
+
+interface ViewerLink {
+  token: string;
+  label: string;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+function viewerUrl(token: string) {
+  return `${window.location.origin}/view/${token}`;
+}
+
+function ViewersTab() {
+  const { show } = useToast();
+  const [links, setLinks] = useState<ViewerLink[]>([]);
+  const [label, setLabel] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [missingTable, setMissingTable] = useState(false);
+  const [pendingRevoke, setPendingRevoke] = useState<ViewerLink | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("viewer_links")
+      .select("*")
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false });
+    setMissingTable(!!error);
+    setLinks((data as ViewerLink[]) || []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handleCreate() {
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("viewer_links")
+      .insert({ label: label.trim() })
+      .select()
+      .single();
+    setSaving(false);
+    if (error || !data) {
+      show("Couldn't create link", "error");
+      return;
+    }
+    setLabel("");
+    await load();
+    await copy(data as ViewerLink);
+  }
+
+  async function copy(link: ViewerLink) {
+    try {
+      await navigator.clipboard.writeText(viewerUrl(link.token));
+      show("Link copied — send it to your viewer", "success");
+    } catch {
+      show("Couldn't copy — long-press the link to copy it", "error");
+    }
+  }
+
+  async function share(link: ViewerLink) {
+    const url = viewerUrl(link.token);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Squarefour Developments", text: "View-only access to our site accounts", url });
+        return;
+      } catch {
+        // Cancelled by the user — nothing to do.
+        return;
+      }
+    }
+    copy(link);
+  }
+
+  async function revoke(link: ViewerLink) {
+    setPendingRevoke(null);
+    const { error } = await supabase
+      .from("viewer_links")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("token", link.token);
+    if (error) {
+      show("Couldn't turn off link", "error");
+      return;
+    }
+    show("Link turned off — viewers using it lose access", "info");
+    load();
+  }
+
+  if (loading) return <Spinner className="mx-auto h-5 w-5 text-amber-500" />;
+
+  if (missingTable) {
+    return (
+      <Card className="flex flex-col gap-2">
+        <p className="font-semibold text-slate-800">One-time setup needed</p>
+        <p className="text-sm text-slate-500">
+          Run <code className="rounded bg-slate-100 px-1.5 py-0.5">supabase/viewer-access.sql</code> in Supabase
+          Dashboard → SQL Editor, then reopen this tab.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Card className="flex flex-col gap-3">
+        <div>
+          <p className="font-semibold text-slate-800">Share view-only access</p>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Anyone who opens a viewer link can see sites, the ledger, workers and bills, but can&apos;t add,
+            edit or delete anything.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Who is it for? (e.g. Client – Mr. Khan)"
+          />
+          <Button className="shrink-0" onClick={handleCreate} disabled={saving}>
+            {saving ? "Creating..." : "Create Link"}
+          </Button>
+        </div>
+      </Card>
+
+      {links.length === 0 ? (
+        <p className="py-4 text-center text-sm text-slate-400">No active viewer links.</p>
+      ) : (
+        links.map((l) => (
+          <div key={l.token} className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3.5">
+            <div className="min-w-0">
+              <p className="truncate font-medium text-slate-800">{l.label || "Viewer link"}</p>
+              <p className="truncate font-mono text-xs text-slate-400">{viewerUrl(l.token)}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:justify-end">
+              <Button size="sm" variant="secondary" onClick={() => copy(l)}>
+                Copy
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => share(l)}>
+                Share
+              </Button>
+              <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => setPendingRevoke(l)}>
+                Turn off
+              </Button>
+            </div>
+          </div>
+        ))
+      )}
+
+      <ConfirmDialog
+        open={!!pendingRevoke}
+        title="Turn off this link?"
+        description="Anyone who joined with it will lose access straight away. You can always create a new link."
+        confirmLabel="Turn off"
+        danger
+        onConfirm={() => pendingRevoke && revoke(pendingRevoke)}
+        onCancel={() => setPendingRevoke(null)}
+      />
+    </div>
   );
 }

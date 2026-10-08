@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useSites } from "@/context/SiteContext";
 import { useToast } from "@/context/ToastContext";
 import { supabase } from "@/lib/supabase/client";
@@ -22,6 +23,7 @@ const TYPE_FILTERS: { value: EntryType | "all"; label: string }[] = [
 ];
 
 export default function LedgerPage() {
+  const { isViewer } = useAuth();
   const { selectedSiteId } = useSites();
   const { show } = useToast();
   const [period, setPeriod] = useState<PeriodValue>(periodFor("weekly"));
@@ -67,7 +69,7 @@ export default function LedgerPage() {
   const filtered = entries.filter(matchesFilters);
   const active = filtered.filter((e) => !e.deleted_at);
   const deleted = filtered.filter((e) => e.deleted_at);
-  const visible = showDeleted ? filtered : active;
+  const visible = showDeleted && !isViewer ? filtered : active;
   const total = active.reduce((s, e) => s + Number(e.amount), 0);
 
   async function confirmDelete() {
@@ -95,7 +97,7 @@ export default function LedgerPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-slate-900">Site Ledger</h1>
+      <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Site Ledger</h1>
 
       <PeriodFilter value={period} onChange={setPeriod} />
 
@@ -105,8 +107,8 @@ export default function LedgerPage() {
         placeholder="Search description, category, or worker..."
       />
 
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
           {TYPE_FILTERS.map((f) => (
             <button
               key={f.value}
@@ -120,23 +122,25 @@ export default function LedgerPage() {
             </button>
           ))}
         </div>
+        {!isViewer && (
         <button
           onClick={() => setShowDeleted((v) => !v)}
           className={clsx(
-            "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold",
+            "shrink-0 self-start rounded-full px-3.5 py-1.5 text-sm font-semibold",
             showDeleted ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
           )}
         >
           {showDeleted ? "Hide Deleted" : "Show Deleted"}
           {deleted.length > 0 ? ` (${deleted.length})` : ""}
         </button>
+        )}
       </div>
 
-      <Card className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-500">
+      <Card className="flex items-center justify-between gap-3">
+        <span className="shrink-0 text-sm font-semibold text-slate-500">
           {active.length} {active.length === 1 ? "entry" : "entries"}
         </span>
-        <span className="text-lg font-bold text-slate-900">{formatMoney(total)}</span>
+        <span className="min-w-0 break-all text-right text-lg font-bold text-slate-900">{formatMoney(total)}</span>
       </Card>
 
       {loading ? (
@@ -148,8 +152,8 @@ export default function LedgerPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {visible.map((e) => (
-            <div key={e.id} className="flex items-center gap-2">
-              <div className={clsx("flex-1", e.deleted_at && "opacity-50")}>
+            <div key={e.id} className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+              <div className={clsx("min-w-0 flex-1", e.deleted_at && "opacity-50")}>
                 <EntryRow entry={e} onClick={e.deleted_at ? undefined : () => setEditingEntry(e)} />
                 {e.deleted_at && (
                   <span className="mt-1 inline-block rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
@@ -157,7 +161,7 @@ export default function LedgerPage() {
                   </span>
                 )}
               </div>
-              {e.deleted_at ? (
+              {isViewer ? null : e.deleted_at ? (
                 <button
                   onClick={() => restore(e)}
                   className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50"
@@ -169,7 +173,7 @@ export default function LedgerPage() {
                   <button
                     onClick={() => setEditingEntry(e)}
                     aria-label="Edit entry"
-                    className="shrink-0 rounded-xl border border-slate-200 bg-white p-3 text-slate-500 hover:border-amber-200 hover:bg-amber-50"
+                    className="shrink-0 rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 hover:border-amber-200 sm:p-3 hover:bg-amber-50"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path
@@ -183,7 +187,7 @@ export default function LedgerPage() {
                   <button
                     onClick={() => setPendingDelete(e)}
                     aria-label="Delete entry"
-                    className="shrink-0 rounded-xl border border-slate-200 bg-white p-3 text-red-500 hover:border-red-200 hover:bg-red-50"
+                    className="shrink-0 rounded-xl border border-slate-200 bg-white p-2.5 text-red-500 hover:border-red-200 sm:p-3 hover:bg-red-50"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path

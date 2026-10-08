@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { useSites } from "@/context/SiteContext";
 import { WORKER_ROLES } from "@/lib/constants";
@@ -15,6 +16,7 @@ interface WorkerWithSite extends Worker {
 }
 
 export default function WorkersPage() {
+  const { isViewer } = useAuth();
   const { show } = useToast();
   const { sites, addSite } = useSites();
   const [workers, setWorkers] = useState<WorkerWithSite[]>([]);
@@ -64,14 +66,16 @@ export default function WorkersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Workers</h1>
-        <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
-          + Add Worker
-        </Button>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Workers</h1>
+        {!isViewer && (
+          <Button size="sm" className="shrink-0" onClick={() => setShowAdd((v) => !v)}>
+            {showAdd ? "Close" : "+ Add Worker"}
+          </Button>
+        )}
       </div>
 
-      {showAdd && (
+      {showAdd && !isViewer && (
         <Card className="flex flex-col gap-3">
           <Input
             value={newName}
@@ -79,7 +83,7 @@ export default function WorkersPage() {
             placeholder="Worker name"
             autoFocus
           />
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex flex-wrap gap-2">
             {WORKER_ROLES.map((r) => (
               <button
                 key={r}
@@ -118,23 +122,23 @@ export default function WorkersPage() {
           <Spinner className="h-6 w-6 text-amber-500" />
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState title="No workers yet" description="Add your labour and mason team to start tracking payments." />
+        <EmptyState title="No workers yet" description={isViewer ? "No workers have been added yet." : "Add your labour and mason team to start tracking payments."} />
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="grid gap-2 md:grid-cols-2">
           {filtered.map((w) => (
             <Link
               key={w.id}
               href={`/workers/${w.id}`}
-              className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 hover:border-amber-200 hover:bg-amber-50/40"
+              className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 hover:border-amber-200 hover:bg-amber-50/40 sm:p-4"
             >
-              <div>
-                <p className="font-semibold text-slate-800">{w.name}</p>
-                <p className="text-xs text-slate-400">
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-800">{w.name}</p>
+                <p className="truncate text-xs text-slate-400">
                   {w.role}
                   {w.site ? ` · ${w.site.name}` : ""}
                 </p>
               </div>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="text-slate-300">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 text-slate-300">
                 <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>

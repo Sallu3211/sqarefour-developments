@@ -21,15 +21,18 @@ import {
 } from "./NavIcons";
 
 const NAV = [
-  { href: "/dashboard", label: "Home", icon: IconHome },
-  { href: "/entries/new", label: "Add", icon: IconPlus },
-  { href: "/ledger", label: "Ledger", icon: IconList },
-  { href: "/workers", label: "Workers", icon: IconUsers },
-  { href: "/bill", label: "Bill", icon: IconReceipt },
+  { href: "/dashboard", label: "Home", icon: IconHome, editorOnly: false },
+  { href: "/entries/new", label: "Add", icon: IconPlus, editorOnly: true },
+  { href: "/ledger", label: "Ledger", icon: IconList, editorOnly: false },
+  { href: "/workers", label: "Workers", icon: IconUsers, editorOnly: false },
+  { href: "/bill", label: "Bill", icon: IconReceipt, editorOnly: false },
 ];
 
+// Pages a read-only viewer is sent away from.
+const EDITOR_ONLY_PATHS = ["/entries", "/settings"];
+
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, isViewer, signOut } = useAuth();
   const { sites, selectedSiteId, setSelectedSiteId, addSite, loading: sitesLoading } = useSites();
   const router = useRouter();
   const pathname = usePathname();
@@ -40,6 +43,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  const blocked = isViewer && EDITOR_ONLY_PATHS.some((p) => pathname.startsWith(p));
+  useEffect(() => {
+    if (blocked) router.replace("/dashboard");
+  }, [blocked, router]);
+
+  const nav = NAV.filter((item) => !(isViewer && item.editorOnly));
+  const isActive = (href: string) => pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
+  const onCreateSite = isViewer
+    ? undefined
+    : async (name: string) => {
+        setCreatingSite(true);
+        const site = await addSite(name);
+        setCreatingSite(false);
+        if (site) setSelectedSiteId(site.id);
+      };
 
   if (!isSupabaseConfigured) {
     return (
@@ -55,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (loading || !user) {
+  if (loading || !user || blocked) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Spinner className="h-8 w-8 text-amber-500" />
@@ -63,104 +82,108 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const siteOptions = sites.map((s) => ({ id: s.id, label: s.name, sublabel: s.code || undefined }));
+
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3">
-          <BrandLogo size={38} />
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+          <BrandLogo size={36} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold text-slate-900">Squarefour Developments</p>
             <p className="truncate text-xs text-slate-400">Site finance &amp; billing</p>
           </div>
-          <Link
-            href="/settings"
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-            aria-label="Settings"
-          >
-            <IconSettings className="h-5 w-5" />
-          </Link>
+          {isViewer && (
+            <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-inset ring-sky-200">
+              View only
+            </span>
+          )}
+          {!isViewer && (
+            <Link
+              href="/settings"
+              className={`shrink-0 rounded-lg p-2.5 hover:bg-slate-100 ${
+                pathname.startsWith("/settings") ? "bg-amber-100 text-amber-700" : "text-slate-500"
+              }`}
+              aria-label="Settings"
+            >
+              <IconSettings className="h-5 w-5" />
+            </Link>
+          )}
           <button
             onClick={() => signOut()}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            className="shrink-0 rounded-lg p-2.5 text-slate-500 hover:bg-slate-100"
             aria-label="Sign out"
           >
             <IconLogout className="h-5 w-5" />
           </button>
         </div>
-        <div className="hidden gap-1 border-t border-slate-100 px-4 pt-2 sm:flex">
-          {NAV.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                  active ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-100"
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-        <div className="mx-auto max-w-4xl px-4 pb-3 pt-2">
+        <nav className="hidden border-t border-slate-100 sm:block">
+          <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-6 pt-2">
+            {nav.map((item) => {
+              const active = isActive(item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    active ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-100"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+        <div className="mx-auto max-w-5xl px-3 pb-2.5 pt-2 sm:px-6 sm:pb-3">
           {sitesLoading ? (
             <div className="h-11 animate-pulse rounded-xl bg-slate-100" />
-          ) : sites.length === 0 ? (
-            <SearchableSelect
-              value={null}
-              onChange={() => {}}
-              options={[]}
-              placeholder="Add your first construction site..."
-              creating={creatingSite}
-              onCreate={async (name) => {
-                setCreatingSite(true);
-                const site = await addSite(name);
-                setCreatingSite(false);
-                if (site) setSelectedSiteId(site.id);
-              }}
-            />
           ) : (
             <SearchableSelect
-              value={selectedSiteId}
-              onChange={setSelectedSiteId}
-              options={sites.map((s) => ({ id: s.id, label: s.name, sublabel: s.code || undefined }))}
-              placeholder="Select a construction site..."
+              value={sites.length === 0 ? null : selectedSiteId}
+              onChange={sites.length === 0 ? () => {} : setSelectedSiteId}
+              options={siteOptions}
+              placeholder={
+                sites.length === 0
+                  ? isViewer
+                    ? "No sites yet"
+                    : "Add your first construction site..."
+                  : "Select a construction site..."
+              }
               creating={creatingSite}
-              onCreate={async (name) => {
-                setCreatingSite(true);
-                const site = await addSite(name);
-                setCreatingSite(false);
-                if (site) setSelectedSiteId(site.id);
-              }}
+              onCreate={onCreateSite}
             />
           )}
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-24 pt-4 sm:pb-8">{children}</main>
+      <main className="mx-auto w-full min-w-0 max-w-5xl flex-1 px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-4 sm:px-6 sm:pb-10 sm:pt-6">
+        {children}
+      </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 [transform:translateZ(0)] border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom,0px)] sm:hidden">
-        <div className="mx-auto flex max-w-4xl">
-          {NAV.map((item) => {
-            const active = pathname === item.href;
+        <div className="mx-auto flex max-w-5xl">
+          {nav.map((item) => {
+            const active = isActive(item.href);
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium ${
+                className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
                   active ? "text-amber-600" : "text-slate-400"
                 }`}
               >
                 <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
                     active ? "bg-amber-100" : ""
                   }`}
                 >
                   <Icon className="h-5 w-5" />
                 </span>
-                {item.label}
+                <span className="max-w-full truncate">{item.label}</span>
               </Link>
             );
           })}

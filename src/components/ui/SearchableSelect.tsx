@@ -87,11 +87,11 @@ export function SearchableSelect({
         disabled={disabled}
         onClick={() => (open ? setOpen(false) : openPanel())}
         className={clsx(
-          "flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left text-base focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200",
+          "flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left text-base focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200",
           disabled && "opacity-50"
         )}
       >
-        <span className={clsx(selected ? "text-slate-900" : "text-slate-400")}>
+        <span className={clsx("min-w-0 truncate", selected ? "text-slate-900" : "text-slate-400")}>
           {selected ? selected.label : placeholder}
         </span>
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 text-slate-400">
@@ -107,11 +107,11 @@ export function SearchableSelect({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Type to search..."
-              className="w-full rounded-lg bg-slate-50 px-3 py-2 text-sm focus:outline-none"
+              className="w-full rounded-lg bg-slate-50 px-3 py-2 text-base focus:outline-none sm:text-sm"
               inputMode="search"
             />
           </div>
-          <div className="max-h-56 overflow-y-auto py-1">
+          <div className="max-h-[min(14rem,45dvh)] overflow-y-auto overscroll-contain py-1">
             {filtered.length === 0 && !onCreate && (
               <p className="px-3 py-3 text-sm text-slate-400">{emptyLabel}</p>
             )}
@@ -121,11 +121,11 @@ export function SearchableSelect({
                 type="button"
                 onClick={() => pick(o.id)}
                 className={clsx(
-                  "flex w-full flex-col px-3.5 py-2.5 text-left text-sm hover:bg-amber-50",
+                  "flex w-full min-w-0 flex-col px-3.5 py-3 text-left text-sm hover:bg-amber-50 sm:py-2.5",
                   o.id === value && "bg-amber-50"
                 )}
               >
-                <span className="font-medium text-slate-800">{o.label}</span>
+                <span className="break-words font-medium text-slate-800">{o.label}</span>
                 {o.sublabel && <span className="text-xs text-slate-400">{o.sublabel}</span>}
               </button>
             ))}
@@ -137,7 +137,7 @@ export function SearchableSelect({
                 className="flex w-full items-center gap-2 border-t border-slate-100 px-3.5 py-2.5 text-left text-sm font-semibold text-amber-700 hover:bg-amber-50"
               >
                 {creating ? <Spinner className="h-4 w-4" /> : <span>+</span>}
-                Add &quot;{query.trim()}&quot;
+                <span className="min-w-0 truncate">Add &quot;{query.trim()}&quot;</span>
               </button>
             )}
           </div>

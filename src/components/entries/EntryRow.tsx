@@ -23,7 +23,7 @@ export function EntryRow({
       type="button"
       onClick={onClick}
       className={clsx(
-        "flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 text-left transition",
+        "flex w-full min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left transition sm:p-3.5",
         onClick && "hover:border-amber-200 hover:bg-amber-50/40"
       )}
     >
@@ -35,7 +35,7 @@ export function EntryRow({
           {formatEntryDate(entry.entry_date, entry.entry_date_end)}
         </p>
       </div>
-      <p className="shrink-0 text-sm font-bold text-slate-900">{formatMoney(entry.amount)}</p>
+      <p className="shrink-0 whitespace-nowrap text-sm font-bold text-slate-900">{formatMoney(entry.amount)}</p>
     </button>
   );
 }

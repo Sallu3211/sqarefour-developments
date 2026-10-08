@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { useSites } from "@/context/SiteContext";
 import { useToast } from "@/context/ToastContext";
 import { useBranding } from "@/hooks/useBranding";
@@ -22,6 +23,7 @@ export default function BillPage() {
 }
 
 function BillPageInner() {
+  const { isViewer } = useAuth();
   const { selectedSite, selectedSiteId } = useSites();
   const { show } = useToast();
   const { branding } = useBranding();
@@ -86,7 +88,8 @@ function BillPageInner() {
   const filenameBase = `bill-${selectedSite?.name?.replace(/\s+/g, "-") || "site"}-${period.start}-to-${period.end}`;
 
   async function saveSnapshot(pdfUrl: string | null) {
-    if (!selectedSiteId) return;
+    // Viewers can export, but bill history is write-protected for them.
+    if (!selectedSiteId || isViewer) return;
     const total = entries.reduce((s, e) => s + Number(e.amount), 0);
     await supabase.from("bills").insert({
       site_id: selectedSiteId,
@@ -144,18 +147,18 @@ function BillPageInner() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-slate-900">Bill / Report</h1>
+      <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Bill / Report</h1>
 
       <PeriodFilter value={period} onChange={setPeriod} />
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Button variant="secondary" size="sm" disabled={!!busy || loading} onClick={handleDownloadPdf}>
           {busy === "pdf" ? "..." : "Download PDF"}
         </Button>
         <Button variant="secondary" size="sm" disabled={!!busy || loading} onClick={handleDownloadImage}>
           {busy === "image" ? "..." : "Download Image"}
         </Button>
-        <Button size="sm" disabled={!!busy || loading} onClick={handleShare}>
+        <Button size="sm" className="col-span-2 sm:col-span-1" disabled={!!busy || loading} onClick={handleShare}>
           {busy === "share" ? "..." : "Share WhatsApp"}
         </Button>
       </div>
@@ -165,7 +168,7 @@ function BillPageInner() {
           <Spinner className="h-6 w-6 text-amber-500" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+        <div className="-mx-3 overflow-x-auto border-y border-slate-200 bg-white shadow-sm sm:mx-0 sm:rounded-2xl sm:border">
           <BillTemplate
             ref={printRef}
             site={selectedSite}
