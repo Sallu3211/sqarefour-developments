@@ -9,6 +9,7 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  enter: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
 }
@@ -40,6 +41,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error ? error.message : null };
   }
 
+  // Temporary: one-tap entry with no email/password. Requires "Allow
+  // anonymous sign-ins" in Supabase → Authentication → Sign In / Providers.
+  // Anonymous users get the `authenticated` role, so existing RLS applies.
+  async function enter() {
+    if (!isSupabaseConfigured) return { error: "Supabase is not configured yet." };
+    const { error } = await supabase.auth.signInAnonymously();
+    return { error: error ? error.message : null };
+  }
+
   async function signOut() {
     if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
@@ -55,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, loading, signIn, signOut, requestPasswordReset }}
+      value={{ user: session?.user ?? null, session, loading, signIn, enter, signOut, requestPasswordReset }}
     >
       {children}
     </AuthContext.Provider>

@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && isSupabaseConfigured && !user) {
-      router.replace("/login");
+      router.replace("/");
     }
   }, [loading, user, router]);
 
