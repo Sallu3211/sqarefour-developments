@@ -32,17 +32,17 @@ const NAV = [
 const EDITOR_ONLY_PATHS = ["/entries", "/settings"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading, isViewer, signOut } = useAuth();
+  const { role, loading, isViewer, signOut } = useAuth();
   const { sites, selectedSiteId, setSelectedSiteId, addSite, loading: sitesLoading } = useSites();
   const router = useRouter();
   const pathname = usePathname();
   const [creatingSite, setCreatingSite] = useState(false);
 
   useEffect(() => {
-    if (!loading && isSupabaseConfigured && !user) {
+    if (!loading && isSupabaseConfigured && !role) {
       router.replace("/");
     }
-  }, [loading, user, router]);
+  }, [loading, role, router]);
 
   const blocked = isViewer && EDITOR_ONLY_PATHS.some((p) => pathname.startsWith(p));
   useEffect(() => {
@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (loading || !user || blocked) {
+  if (loading || !role || blocked) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Spinner className="h-8 w-8 text-amber-500" />

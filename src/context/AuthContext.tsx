@@ -10,31 +10,33 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /** null = not signed in, or signed in but no PIN accepted yet. */
   role: Role | null;
   isViewer: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  enter: () => Promise<{ error: string | null }>;
-  enterAsViewer: (token: string) => Promise<{ error: string | null }>;
+  loginWithPin: (role: Role, pin: string | null) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Email/password users are always editors. Anonymous users get their role
-// from user_roles (see supabase/viewer-access.sql). If that table doesn't
-// exist yet (migration not run), fall back to editor so nothing breaks.
+// Email/password users are always editors. Anonymous (PIN) users get their
+// role from my_role() (see supabase/viewer-access.sql). If that function
+// doesn't exist yet (SQL not run), fall back to editor so nothing breaks.
 async function fetchRole(user: User | null): Promise<Role | null> {
   if (!user) return null;
   if (!user.is_anonymous) return "editor";
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("my_role");
   if (error) return "editor";
-  return (data?.role as Role | undefined) ?? "viewer";
+  return (data as Role | null) ?? null;
 }
+
+const PIN_ERRORS: Record<string, string> = {
+  wrong: "Wrong PIN — try again.",
+  locked: "Too many wrong tries. Wait 10 minutes and try again.",
+  not_set: "Viewer login isn't set up yet. Ask the owner for access.",
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -85,19 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error ? error.message : null };
   }
 
-  // Temporary: one-tap entry with no email/password. Requires "Allow
-  // anonymous sign-ins" in Supabase → Authentication → Sign In / Providers.
-  async function enter() {
-    if (!isSupabaseConfigured) return { error: "Supabase is not configured yet." };
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) return { error: error.message };
-    await supabase.rpc("claim_editor");
-    await refreshRole(data.user);
-    return { error: null };
-  }
-
-  // Read-only entry from a share link created in Settings > Viewer Access.
-  async function enterAsViewer(token: string) {
+  // Home-page Login / Viewer Login. Requires "Allow anonymous sign-ins" in
+  // Supabase → Authentication → Sign In / Providers. A wrong PIN keeps the
+  // anonymous session (with no access) so retries don't create new users.
+  async function loginWithPin(asRole: Role, pin: string | null) {
     if (!isSupabaseConfigured) return { error: "Supabase is not configured yet." };
     let current = user;
     if (!current) {
@@ -105,10 +98,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) return { error: error.message };
       current = data.user;
     }
-    const { data: ok, error } = await supabase.rpc("claim_viewer", { p_token: token });
-    if (error || !ok) {
-      await supabase.auth.signOut();
-      return { error: "This viewer link is invalid or has been turned off." };
+    const { data: result, error } = await supabase.rpc("login_with_pin", { p_role: asRole, p_pin: pin });
+    if (error) {
+      // SQL not run yet: keep the old open Login working, viewers can't log in.
+      if (asRole === "viewer") return { error: PIN_ERRORS.not_set };
+    } else if (result !== "ok") {
+      return { error: PIN_ERRORS[result as string] ?? "Couldn't log in — try again." };
     }
     await refreshRole(current);
     return { error: null };
@@ -136,8 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         isViewer: role === "viewer",
         signIn,
-        enter,
-        enterAsViewer,
+        loginWithPin,
         signOut,
         requestPasswordReset,
       }}

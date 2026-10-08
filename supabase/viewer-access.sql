@@ -1,34 +1,48 @@
 -- =====================================================================
--- Squarefour Developments — viewer (read-only) access
+-- Squarefour Developments — PIN login: owner (editor) + viewer (read-only)
 -- Run this once in Supabase Dashboard > SQL Editor > New query > Run,
 -- after schema.sql. Safe to re-run.
 --
--- Roles:
---   editor  — full access. Every email/password user is an editor; an
---             anonymous user becomes one by tapping Login on the home page.
---   viewer  — read-only. Joins by opening a share link (/view/<token>)
---             created in Settings > Viewer Access. Revoking the link
---             cuts off everyone who joined through it.
+-- Home page has two buttons:
+--   Login         — full access. Asks for the owner PIN if one is set
+--                   (Settings > Login PINs); with no owner PIN it opens
+--                   straight away.
+--   Viewer Login  — read-only. Always asks for the viewer PIN. Changing
+--                   or turning off the viewer PIN signs out every viewer.
+-- Email/password users (if any) are always editors.
 -- =====================================================================
 
-create extension if not exists "pgcrypto";
+create extension if not exists "pgcrypto" with schema extensions;
 
-create table if not exists viewer_links (
-  token text primary key default encode(gen_random_bytes(16), 'hex'),
-  label text not null default '',
-  created_at timestamptz not null default now(),
-  revoked_at timestamptz
+-- Clean up the earlier share-link version, if it was ever run.
+drop function if exists claim_viewer(text);
+drop function if exists claim_editor();
+alter table if exists user_roles drop column if exists viewer_link;
+drop table if exists viewer_links cascade;
+
+create table if not exists access_pins (
+  role text primary key check (role in ('editor','viewer')),
+  pin_hash text not null,
+  version int not null default 1,
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists user_roles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   role text not null check (role in ('editor','viewer')),
-  viewer_link text references viewer_links(token) on delete cascade,
+  pin_version int not null default 0,
   created_at timestamptz not null default now()
 );
+alter table user_roles add column if not exists pin_version int not null default 0;
+
+create table if not exists pin_attempts (
+  user_id uuid not null,
+  at timestamptz not null default now()
+);
+create index if not exists pin_attempts_user_idx on pin_attempts (user_id, at);
 
 -- ---------------------------------------------------------------------
--- Role checks (security definer so policies can read user_roles)
+-- Role checks (security definer so policies can read the role tables)
 -- ---------------------------------------------------------------------
 
 create or replace function is_editor() returns boolean
@@ -44,43 +58,100 @@ language sql stable security definer set search_path = public as $$
   select is_editor() or exists (
     select 1
     from user_roles r
-    join viewer_links l on l.token = r.viewer_link
-    where r.user_id = auth.uid() and r.role = 'viewer' and l.revoked_at is null
+    join access_pins p on p.role = 'viewer' and p.version = r.pin_version
+    where r.user_id = auth.uid() and r.role = 'viewer'
   );
 $$;
 
--- Called right after the home-page Login button signs in anonymously.
--- Never downgrades/upgrades an existing role (a viewer stays a viewer).
-create or replace function claim_editor() returns void
-language plpgsql security definer set search_path = public as $$
+-- What the current user may do: 'editor', 'viewer' or null (no access).
+create or replace function my_role() returns text
+language sql stable security definer set search_path = public as $$
+  select case when is_editor() then 'editor' when can_view() then 'viewer' else null end;
+$$;
+
+-- Which PINs are set. Callable before sign-in so the home page knows
+-- whether to ask for a PIN.
+create or replace function pin_status() returns table (editor_pin boolean, viewer_pin boolean)
+language sql stable security definer set search_path = public as $$
+  select
+    exists (select 1 from access_pins where role = 'editor'),
+    exists (select 1 from access_pins where role = 'viewer');
+$$;
+
+-- Returns 'ok', 'wrong', 'locked' (5 wrong tries in 10 min) or 'not_set'.
+create or replace function login_with_pin(p_role text, p_pin text) returns text
+language plpgsql security definer set search_path = public, extensions as $$
+declare
+  rec access_pins%rowtype;
 begin
   if auth.uid() is null then
     raise exception 'not signed in';
   end if;
-  insert into user_roles (user_id, role) values (auth.uid(), 'editor')
-  on conflict (user_id) do nothing;
+  if p_role not in ('editor','viewer') then
+    raise exception 'bad role';
+  end if;
+
+  select * into rec from access_pins where role = p_role;
+
+  if not found then
+    if p_role = 'viewer' then
+      return 'not_set';
+    end if;
+    -- No owner PIN set: Login opens without one.
+  else
+    if (select count(*) from pin_attempts
+        where user_id = auth.uid() and at > now() - interval '10 minutes') >= 5 then
+      return 'locked';
+    end if;
+    if p_pin is null or crypt(p_pin, rec.pin_hash) <> rec.pin_hash then
+      insert into pin_attempts (user_id) values (auth.uid());
+      return 'wrong';
+    end if;
+  end if;
+
+  delete from pin_attempts where user_id = auth.uid();
+  insert into user_roles (user_id, role, pin_version)
+  values (auth.uid(), p_role, coalesce(rec.version, 0))
+  on conflict (user_id) do update
+    set role = case when user_roles.role = 'editor' then 'editor' else excluded.role end,
+        pin_version = excluded.pin_version;
+  return 'ok';
 end;
 $$;
 
--- Called by the /view/<token> page. Returns false for a bad/revoked link.
-create or replace function claim_viewer(p_token text) returns boolean
-language plpgsql security definer set search_path = public as $$
+-- Owner only. p_pin null removes the PIN (owner: Login opens without a
+-- PIN; viewer: Viewer Login is turned off). Any change to the viewer PIN
+-- signs out every current viewer.
+create or replace function set_pin(p_role text, p_pin text) returns void
+language plpgsql security definer set search_path = public, extensions as $$
 begin
-  if auth.uid() is null then
-    raise exception 'not signed in';
+  if not is_editor() then
+    raise exception 'only the owner can change PINs';
   end if;
-  if not exists (select 1 from viewer_links where token = p_token and revoked_at is null) then
-    return false;
+  if p_role not in ('editor','viewer') then
+    raise exception 'bad role';
   end if;
-  insert into user_roles (user_id, role, viewer_link) values (auth.uid(), 'viewer', p_token)
-  on conflict (user_id) do update set viewer_link = excluded.viewer_link
-    where user_roles.role = 'viewer';
-  return true;
+  if p_pin is null then
+    delete from access_pins where role = p_role;
+    return;
+  end if;
+  if p_pin !~ '^[0-9]{4,6}$' then
+    raise exception 'PIN must be 4 to 6 digits';
+  end if;
+  insert into access_pins (role, pin_hash, version)
+  values (p_role, crypt(p_pin, gen_salt('bf')),
+          coalesce((select max(pin_version) from user_roles where role = p_role), 0) + 1)
+  on conflict (role) do update
+    set pin_hash = excluded.pin_hash,
+        version = access_pins.version + 1,
+        updated_at = now();
 end;
 $$;
 
--- Whoever was already signed in through the Login button before this ran
--- keeps full access.
+grant execute on function pin_status() to anon, authenticated;
+grant execute on function my_role(), login_with_pin(text, text), set_pin(text, text) to authenticated;
+
+-- Whoever already signed in with the open Login button keeps full access.
 insert into user_roles (user_id, role)
 select id, 'editor' from auth.users where is_anonymous
 on conflict (user_id) do nothing;
@@ -89,12 +160,9 @@ on conflict (user_id) do nothing;
 -- Row Level Security — viewers read, editors write
 -- ---------------------------------------------------------------------
 
-alter table viewer_links enable row level security;
+alter table access_pins enable row level security;   -- no policies: functions only
+alter table pin_attempts enable row level security;  -- no policies: functions only
 alter table user_roles enable row level security;
-
-drop policy if exists "editors manage links" on viewer_links;
-create policy "editors manage links" on viewer_links for all
-  using (is_editor()) with check (is_editor());
 
 drop policy if exists "read own role" on user_roles;
 create policy "read own role" on user_roles for select

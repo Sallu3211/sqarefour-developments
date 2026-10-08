@@ -14,14 +14,14 @@ import { Logo } from "@/components/ui/Logo";
 import { IconEdit } from "@/components/layout/NavIcons";
 import clsx from "clsx";
 
-type Tab = "sites" | "categories" | "workers" | "branding" | "viewers";
+type Tab = "sites" | "categories" | "workers" | "branding" | "pins";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "sites", label: "Sites" },
   { id: "categories", label: "Categories" },
   { id: "workers", label: "Workers" },
   { id: "branding", label: "Branding" },
-  { id: "viewers", label: "Viewer Access" },
+  { id: "pins", label: "Login PINs" },
 ];
 
 export default function SettingsPage() {
@@ -49,7 +49,7 @@ export default function SettingsPage() {
       {tab === "categories" && <CategoriesTab />}
       {tab === "workers" && <WorkersTab />}
       {tab === "branding" && <BrandingTab />}
-      {tab === "viewers" && <ViewersTab />}
+      {tab === "pins" && <PinsTab />}
     </div>
   );
 }
@@ -623,99 +623,24 @@ function BrandingTab() {
   );
 }
 
-interface ViewerLink {
-  token: string;
-  label: string;
-  created_at: string;
-  revoked_at: string | null;
-}
-
-function viewerUrl(token: string) {
-  return `${window.location.origin}/view/${token}`;
-}
-
-function ViewersTab() {
-  const { show } = useToast();
-  const [links, setLinks] = useState<ViewerLink[]>([]);
-  const [label, setLabel] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [missingTable, setMissingTable] = useState(false);
-  const [pendingRevoke, setPendingRevoke] = useState<ViewerLink | null>(null);
+function PinsTab() {
+  const [status, setStatus] = useState<{ editor: boolean; viewer: boolean } | null>(null);
+  const [missingSql, setMissingSql] = useState(false);
 
   async function load() {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("viewer_links")
-      .select("*")
-      .is("revoked_at", null)
-      .order("created_at", { ascending: false });
-    setMissingTable(!!error);
-    setLinks((data as ViewerLink[]) || []);
-    setLoading(false);
+    const { data, error } = await supabase.rpc("pin_status");
+    const row = Array.isArray(data) ? data[0] : data;
+    setMissingSql(!!error);
+    setStatus({ editor: !!row?.editor_pin, viewer: !!row?.viewer_pin });
   }
 
   useEffect(() => {
     load();
   }, []);
 
-  async function handleCreate() {
-    setSaving(true);
-    const { data, error } = await supabase
-      .from("viewer_links")
-      .insert({ label: label.trim() })
-      .select()
-      .single();
-    setSaving(false);
-    if (error || !data) {
-      show("Couldn't create link", "error");
-      return;
-    }
-    setLabel("");
-    await load();
-    await copy(data as ViewerLink);
-  }
+  if (!status) return <Spinner className="mx-auto h-5 w-5 text-amber-500" />;
 
-  async function copy(link: ViewerLink) {
-    try {
-      await navigator.clipboard.writeText(viewerUrl(link.token));
-      show("Link copied — send it to your viewer", "success");
-    } catch {
-      show("Couldn't copy — long-press the link to copy it", "error");
-    }
-  }
-
-  async function share(link: ViewerLink) {
-    const url = viewerUrl(link.token);
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Squarefour Developments", text: "View-only access to our site accounts", url });
-        return;
-      } catch {
-        // Cancelled by the user — nothing to do.
-        return;
-      }
-    }
-    copy(link);
-  }
-
-  async function revoke(link: ViewerLink) {
-    setPendingRevoke(null);
-    const { error } = await supabase
-      .from("viewer_links")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("token", link.token);
-    if (error) {
-      show("Couldn't turn off link", "error");
-      return;
-    }
-    show("Link turned off — viewers using it lose access", "info");
-    load();
-  }
-
-  if (loading) return <Spinner className="mx-auto h-5 w-5 text-amber-500" />;
-
-  if (missingTable) {
+  if (missingSql) {
     return (
       <Card className="flex flex-col gap-2">
         <p className="font-semibold text-slate-800">One-time setup needed</p>
@@ -729,59 +654,118 @@ function ViewersTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      <Card className="flex flex-col gap-3">
-        <div>
-          <p className="font-semibold text-slate-800">Share view-only access</p>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Anyone who opens a viewer link can see sites, the ledger, workers and bills, but can&apos;t add,
-            edit or delete anything.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="Who is it for? (e.g. Client – Mr. Khan)"
-          />
-          <Button className="shrink-0" onClick={handleCreate} disabled={saving}>
-            {saving ? "Creating..." : "Create Link"}
-          </Button>
-        </div>
-      </Card>
-
-      {links.length === 0 ? (
-        <p className="py-4 text-center text-sm text-slate-400">No active viewer links.</p>
-      ) : (
-        links.map((l) => (
-          <div key={l.token} className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3.5">
-            <div className="min-w-0">
-              <p className="truncate font-medium text-slate-800">{l.label || "Viewer link"}</p>
-              <p className="truncate font-mono text-xs text-slate-400">{viewerUrl(l.token)}</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2 sm:flex sm:justify-end">
-              <Button size="sm" variant="secondary" onClick={() => copy(l)}>
-                Copy
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => share(l)}>
-                Share
-              </Button>
-              <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => setPendingRevoke(l)}>
-                Turn off
-              </Button>
-            </div>
-          </div>
-        ))
-      )}
-
-      <ConfirmDialog
-        open={!!pendingRevoke}
-        title="Turn off this link?"
-        description="Anyone who joined with it will lose access straight away. You can always create a new link."
-        confirmLabel="Turn off"
-        danger
-        onConfirm={() => pendingRevoke && revoke(pendingRevoke)}
-        onCancel={() => setPendingRevoke(null)}
+      <PinCard
+        role="editor"
+        title="Owner PIN"
+        description={
+          status.editor
+            ? "The Login button asks for this PIN. It gives full access."
+            : "Not set — anyone who taps Login gets full access, including viewers. Set a PIN to protect it."
+        }
+        isSet={status.editor}
+        onChanged={load}
+      />
+      <PinCard
+        role="viewer"
+        title="Viewer PIN"
+        description={
+          status.viewer
+            ? "Share this PIN with people who should only see data. Viewer Login can't add, edit or delete anything. Changing it signs out every viewer."
+            : "Not set — Viewer Login is off. Set a PIN, then share it with anyone who should only see data."
+        }
+        isSet={status.viewer}
+        onChanged={load}
       />
     </div>
+  );
+}
+
+function PinCard({
+  role,
+  title,
+  description,
+  isSet,
+  onChanged,
+}: {
+  role: "editor" | "viewer";
+  title: string;
+  description: string;
+  isSet: boolean;
+  onChanged: () => void;
+}) {
+  const { show } = useToast();
+  const [pin, setPin] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState(false);
+  const valid = /^[0-9]{4,6}$/.test(pin);
+
+  async function save(value: string | null) {
+    setPendingRemove(false);
+    setSaving(true);
+    const { error } = await supabase.rpc("set_pin", { p_role: role, p_pin: value });
+    setSaving(false);
+    if (error) {
+      show(error.message || "Couldn't save PIN", "error");
+      return;
+    }
+    setPin("");
+    show(value ? `${title} saved` : `${title} removed`, "success");
+    onChanged();
+  }
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-slate-800">{title}</p>
+          <p className="mt-0.5 text-sm text-slate-500">{description}</p>
+        </div>
+        <span
+          className={clsx(
+            "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset",
+            isSet ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-slate-100 text-slate-500 ring-slate-200"
+          )}
+        >
+          {isSet ? "On" : "Off"}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          type="password"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="new-password"
+          maxLength={6}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          placeholder={isSet ? "New 4–6 digit PIN" : "4–6 digit PIN"}
+          className="tracking-widest"
+        />
+        <Button className="shrink-0" onClick={() => save(pin)} disabled={saving || !valid}>
+          {isSet ? "Change" : "Set PIN"}
+        </Button>
+      </div>
+      {isSet && (
+        <button
+          onClick={() => setPendingRemove(true)}
+          className="self-start rounded-lg px-1 py-1 text-sm font-semibold text-red-500"
+        >
+          {role === "viewer" ? "Turn off Viewer Login" : "Remove owner PIN"}
+        </button>
+      )}
+      <ConfirmDialog
+        open={pendingRemove}
+        title={role === "viewer" ? "Turn off Viewer Login?" : "Remove owner PIN?"}
+        description={
+          role === "viewer"
+            ? "Every viewer is signed out straight away and can't log in until you set a new PIN."
+            : "Anyone who taps Login will get full access without a PIN."
+        }
+        confirmLabel={role === "viewer" ? "Turn off" : "Remove"}
+        danger
+        onConfirm={() => save(null)}
+        onCancel={() => setPendingRemove(false)}
+      />
+    </Card>
   );
 }
